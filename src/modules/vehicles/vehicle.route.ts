@@ -13,13 +13,13 @@ const { getAll, getById } = new VehicleController();
 
 const allowedRoles: UserRole[] = ["DEALER_STAFF", "DEALER_MANAGER"];
 router.get("/", 
-    authMiddleware, 
-    checkRole(allowedRoles), 
+    // authMiddleware, 
+    // checkRole(allowedRoles), 
     getAll);
 router.get(
   "/:id",
-  authMiddleware,
-  checkRole(allowedRoles),
+  // authMiddleware,
+  // checkRole(allowedRoles),
   validate(vehicleIdParamSchema),
   getById
 );
