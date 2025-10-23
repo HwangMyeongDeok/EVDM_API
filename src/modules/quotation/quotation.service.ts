@@ -1,86 +1,92 @@
 import { AppError } from "../../common/middlewares/AppError";
-import { VehicleModel } from "../vehicles/vehicle.model";
+import { Quotation, QuotationStatus } from "./quotation.model";
 import QuotationRepository from "./quotation.repository";
-import { IQuotation, CreateQuotationDto } from "./quotation.interface";
+import { CreateQuotationDto } from "./quotation.dto";
+import { AppDataSource } from "../../config/data-source";
+import { VehicleVariant } from "../vehicle-variant/vehicle-variant.model";
+import { Customer } from "../customer/customer.model";
+import { Dealer } from "../dealer/dealer.model";
+import { User } from "../user/user.model";
+import { QuotationItem } from "../quotation-item/quotation-item.model";
 
 export class QuotationService {
+  private quotationRepo = QuotationRepository;
+  private variantRepo = AppDataSource.getRepository(VehicleVariant);
 
+  // 🟢 Tạo mới báo giá
   public async create(
-    staffId: string,
-    dealerId: string,
+    userId: number,
+    dealerId: number,
     input: CreateQuotationDto
-  ): Promise<IQuotation> {
+  ): Promise<Quotation> {
     if (!input.items?.length) {
       throw new AppError("Quotation must have at least one item", 400);
     }
 
-    const processedItems = await Promise.all(
-      input.items.map(async (item) => {
-        const vehicleWithVariant = await VehicleModel.findOne(
-          { "variants._id": item.variantId },
-          { "variants.$": 1, modelName: 1 }
-        );
+    const processedItems = [];
 
-        if (!vehicleWithVariant || vehicleWithVariant.variants.length === 0) {
-          throw new AppError(`No variant found with id ${item.variantId}`, 404);
-        }
+    for (const item of input.items) {
+      const variant = await this.variantRepo.findOne({
+        where: { variant_id: item.variantId },
+        relations: ["vehicle"],
+      });
 
-        const variant = vehicleWithVariant.variants[0];
-        const unitPrice = variant.retailPrice;
+      if (!variant) {
+        throw new AppError(`No variant found with id ${item.variantId}`, 404);
+      }
 
-        if (typeof unitPrice !== "number" || unitPrice <= 0) {
-          throw new AppError(
-            `Invalid price for variant ${item.variantId}`,
-            400
-          );
-        }
+      const unitPrice = Number(variant.retail_price);
+      if (isNaN(unitPrice) || unitPrice <= 0) {
+        throw new AppError(`Invalid price for variant ${item.variantId}`, 400);
+      }
 
-        const lineTotal = item.quantity * unitPrice;
+      const lineTotal = item.quantity * unitPrice;
 
-        return {
-          variantId: item.variantId,
-          description: `${vehicleWithVariant.modelName} - ${variant.version} (${variant.color})`,
-          quantity: item.quantity,
-          unitPrice,
-          discountAmount: 0,
-          lineTotal,
-        };
-      })
-    );
+      processedItems.push({
+        variant,
+        description: `${variant.vehicle.model_name} - ${variant.version} (${variant.color})`,
+        quantity: item.quantity,
+        unit_price: unitPrice,
+        discount_amount: 0,
+        line_total: lineTotal,
+      });
+    }
 
-    const subtotal = processedItems.reduce((sum, i) => sum + i.lineTotal, 0);
+    const subtotal = processedItems.reduce((sum, i) => sum + i.line_total, 0);
     const taxRate = 10;
     const taxAmount = subtotal * (taxRate / 100);
     const totalAmount = subtotal + taxAmount;
 
-    const quotationNumber = `Q-${Date.now()}-${Math.floor(Math.random() * 1000)
+    const quotationNumber = `Q-${Date.now()}-${Math.floor(
+      Math.random() * 1000
+    )
       .toString()
       .padStart(3, "0")}`;
 
-    const quotation = await QuotationRepository.create({
-      quotationNumber,
-      customer: input.customerId,
-      dealer: dealerId,
-      staff: staffId,
-      items: processedItems,
+    const quotation = await this.quotationRepo.create({
+      quotation_number: quotationNumber,
+      customer: { customer_id: input.customerId } as Customer,
+      dealer: { dealer_id: dealerId } as Dealer,
+      user: { user_id: userId } as User,
+      items: processedItems as QuotationItem[],
       subtotal,
-      taxRate,
-      taxAmount,
-      discountTotal: 0,
-      totalAmount,
+      tax_rate: taxRate,
+      tax_amount: taxAmount,
+      discount_total: 0,
+      total_amount: totalAmount,
       notes: input.notes,
-      status: "DRAFT",
+      status: QuotationStatus.DRAFT,
     });
 
     return quotation;
   }
 
-  public async getAllByDealer(dealerId: string): Promise<IQuotation[]> {
-    return await QuotationRepository.findAllByDealer(dealerId);
+  public async getAllByDealer(dealerId: number): Promise<Quotation[]> {
+    return await this.quotationRepo.findAllByDealer(dealerId);
   }
 
-  public async getById(id: string): Promise<IQuotation> {
-    const quotation = await QuotationRepository.findById(id);
+  public async getById(id: number): Promise<Quotation> {
+    const quotation = await this.quotationRepo.findById(id);
     if (!quotation) {
       throw new AppError("Quotation not found", 404);
     }
@@ -88,9 +94,9 @@ export class QuotationService {
   }
 
   public async update(
-    id: string,
-    updateData: Partial<IQuotation>
-  ): Promise<IQuotation> {
+    id: number,
+    updateData: Partial<Quotation>
+  ): Promise<Quotation> {
     const quotation = await this.getById(id);
 
     if (quotation.status !== "DRAFT") {
@@ -100,19 +106,19 @@ export class QuotationService {
       );
     }
 
-    const updatedQuotation = await QuotationRepository.updateById(
+    updateData.updated_at = new Date();
+    const updatedQuotation = await this.quotationRepo.updateById(
       id,
       updateData
     );
-
     if (!updatedQuotation) {
-      throw new AppError("Failed to update quotation", 500);
+      throw new AppError("Update failed", 400);
     }
 
     return updatedQuotation;
   }
 
-  public async delete(id: string): Promise<void> {
+  public async delete(id: number): Promise<void> {
     const quotation = await this.getById(id);
 
     if (quotation.status !== "DRAFT") {
@@ -122,7 +128,10 @@ export class QuotationService {
       );
     }
 
-    await QuotationRepository.deleteById(id);
+    const deleted = await this.quotationRepo.deleteById(id);
+    if (!deleted) {
+      throw new AppError("Failed to delete quotation", 400);
+    }
   }
 }
 

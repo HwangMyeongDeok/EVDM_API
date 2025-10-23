@@ -1,20 +1,21 @@
-import dotenv from "dotenv";
-import app from "./app";
-import connectDB from "./config/database";
+import 'reflect-metadata';
+import app from './app';
+import { AppDataSource } from './config/data-source';
+import { ENV } from './config';
 
-dotenv.config();
 
-const PORT = process.env.PORT || 4000;
+const PORT = ENV.DB_PORT || 4000;
 
 const startServer = async () => {
   try {
-    await connectDB();
-
+    await AppDataSource.initialize();
+    console.log('DATABASE CONNECTED!');
+    
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };

@@ -17,7 +17,7 @@ import VehicleService from './vehicle.service';
 
   public async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const vehicle = await VehicleService.getVehicleById(req.params.id);
+      const vehicle = await VehicleService.getVehicleById(req.params.id as unknown as number);
       res.status(200).json({
         success: true,
         data: vehicle,

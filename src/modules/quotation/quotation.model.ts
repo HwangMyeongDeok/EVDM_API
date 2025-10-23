@@ -1,29 +1,89 @@
-import { Schema, model } from 'mongoose';
-import { IQuotation, IQuotationItem } from './quotation.interface';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToOne,
+} from "typeorm";
+import { Customer } from "../customer/customer.model";
+import { Dealer } from "../dealer/dealer.model";
+import { User } from "../user/user.model";
+import { QuotationItem } from "../quotation-item/quotation-item.model";
+import { Contract } from "../contract/contract.model";
 
-const QuotationItemSchema = new Schema<IQuotationItem>({
-  variantId: { type: Schema.Types.ObjectId, ref: 'VehicleVariant', required: true },
-  description: String,
-  quantity: { type: Number, required: true },
-  unitPrice: { type: Number, required: true },
-  discountAmount: { type: Number, default: 0 },
-  lineTotal: { type: Number, required: true },
-}, { _id: false });
+export enum QuotationStatus {
+  DRAFT = "DRAFT",
+  SENT = "SENT",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 
-const QuotationSchema = new Schema<IQuotation>({
-  quotationNumber: { type: String, required: true, unique: true },
-  customer: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
-  dealer: { type: Schema.Types.ObjectId, ref: 'Dealer', required: true },
-  staff: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  status: { type: String, enum: ['DRAFT', 'SENT', 'APPROVED', 'REJECTED'], default: 'DRAFT' },
-  subtotal: { type: Number, required: true },
-  taxRate: { type: Number, default: 10 },
-  taxAmount: { type: Number, required: true },
-  discountTotal: { type: Number, default: 0 },
-  totalAmount: { type: Number, required: true },
-  notes: String,
-  approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  items: [QuotationItemSchema],
-}, { timestamps: true });
+@Entity({ name: "quotations" })
+export class Quotation {
+  @PrimaryGeneratedColumn()
+  quotation_id!: number;
 
-export const QuotationModel = model<IQuotation>('Quotation', QuotationSchema);
+  @Column({ length: 50, unique: true, nullable: true })
+  quotation_number!: string;
+
+  @Column()
+  customer_id!: number;
+
+  @ManyToOne(() => Customer)
+  @JoinColumn({ name: "customer_id" })
+  customer!: Customer;
+
+  @Column()
+  dealer_id!: number;
+
+  @ManyToOne(() => Dealer)
+  @JoinColumn({ name: "dealer_id" })
+  dealer!: Dealer;
+
+  @Column()
+  user_id!: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "user_id" })
+  user!: User;
+
+  @OneToMany(() => QuotationItem, (item) => item.quotation, { cascade: true })
+  items!: QuotationItem[];
+
+  @Column({ type: "varchar", length: 20, default: QuotationStatus.DRAFT })
+  status!: QuotationStatus;
+
+  @Column("decimal", { precision: 15, scale: 2, nullable: true })
+  subtotal!: number;
+
+  @Column("decimal", { precision: 5, scale: 2, default: 10.0 })
+  tax_rate!: number;
+
+  @Column("decimal", { precision: 15, scale: 2, nullable: true })
+  tax_amount!: number;
+
+  @Column("decimal", { precision: 15, scale: 2, default: 0.0 })
+  discount_total!: number;
+
+  @Column("decimal", { precision: 15, scale: 2, nullable: true })
+  total_amount!: number;
+
+  @Column({ type: "text", nullable: true })
+  notes!: string;
+
+  @Column({ nullable: true })
+  approved_by!: number;
+
+  @OneToOne(() => Contract, (contract) => contract.quotation)
+  contract!: Contract;
+
+  @CreateDateColumn({ type: "timestamp" })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: "timestamp", nullable: true })
+  updated_at!: Date;
+}

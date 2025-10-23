@@ -1,14 +1,57 @@
-import { Schema, model } from 'mongoose';
-import { IUser } from './user.interface';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Dealer } from '../dealer/dealer.model';
 
-const UserSchema = new Schema<IUser>({
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true, select: false },
-  role: { type: String, enum: ['DEALER_STAFF', 'DEALER_MANAGER', 'EVM_STAFF', 'ADMIN'], required: true },
-  dealer: { type: Schema.Types.ObjectId, ref: 'Dealer' },
-  fullName: { type: String, required: true },
-  phone: { type: String },
-  avatarUrl: { type: String },
-}, { timestamps: true });
+export enum UserRole {
+  DEALER_STAFF = 'DEALER_STAFF',
+  DEALER_MANAGER = 'DEALER_MANAGER',
+  EVM_STAFF = 'EVM_STAFF',
+  ADMIN = 'ADMIN',
+}
+@Entity({ name: 'users' })
+export class User {
+  @PrimaryGeneratedColumn()
+  user_id!: number;
 
-export const UserModel = model<IUser>('User', UserSchema);
+  @Column({ length: 100, unique: true })
+  email!: string;
+
+  @Column({ length: 255 })
+  password!: string;
+
+   @Column({
+    type: 'varchar',
+    length: 30,
+    default: UserRole.DEALER_STAFF,
+  })
+  role!: UserRole;
+
+  @Column({ nullable: true })
+  dealer_id!: number;
+
+  @ManyToOne(() => Dealer, (dealer) => dealer.users, { nullable: true })
+  @JoinColumn({ name: 'dealer_id' })
+  dealer!: Dealer;
+
+  @Column({ length: 100, nullable: true })
+  full_name!: string;
+
+  @Column({ length: 20, nullable: true })
+  phone!: string;
+
+  @Column({ type: 'text', nullable: true })
+  avatar_url!: string;
+
+  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  updated_at!: Date;
+}

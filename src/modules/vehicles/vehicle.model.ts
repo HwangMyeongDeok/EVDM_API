@@ -1,47 +1,59 @@
-import { Schema, model, Types } from 'mongoose';
-import { IVehicle, IVehicleUnit, IVehicleVariant } from './vehicle.interface';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { VehicleVariant } from "../vehicle-variant/vehicle-variant.model";
 
-const VehicleUnitSchema = new Schema<IVehicleUnit>({
-    vin: { type: String, required: true, unique: true },
-    dealer: { type: Types.ObjectId, ref: 'Dealer' },
-    importDate: { type: Date, default: Date.now },
-    status: {
-        type: String,
-        enum: ['IN_TRANSIT', 'IN_DEALER', 'SOLD'],
-        default: 'IN_TRANSIT'
-    }
-});
+export enum VehicleBodyType {
+  SUV = "SUV",
+  Sedan = "Sedan",
+  Hatchback = "Hatchback",
+  Crossover = "Crossover",
+  Pickup = "Pickup",
+  MPV = "MPV",
+}
 
+@Entity({ name: "vehicles" })
+export class Vehicle {
+  @PrimaryGeneratedColumn()
+  vehicle_id!: number;
 
-const VehicleVariantSchema = new Schema<IVehicleVariant>({
-    version: { type: String, required: true },
-    color: { type: String, required: true },
-    dealerPrice: { type: Number, required: true },
-    basePrice: { type: Number, required: true },
-    retailPrice: { type: Number, required: true },
-    discountPercent: { type: Number, default: 0 }, 
-    modelYear: { type: Number, default: new Date().getFullYear() + 1 },
-    batteryCapacityKwh: Number,
-    rangeKm: Number,
-    motorPowerKw: Number,
-    acceleration0100: Number,
-    topSpeedKmh: Number,
-    chargingTimeHours: Number,
-    status: { type: String, enum: ['ACTIVE', 'DISCONTINUED'], default: 'ACTIVE' },
-    units: [VehicleUnitSchema]
-});
+  @Column({ length: 100 })
+  model_name!: string;
 
+  @Column({ type: "text", nullable: true })
+  specifications!: string;
 
-const VehicleSchema = new Schema<IVehicle>({
-    modelName: { type: String, required: true, unique: true },
-    specifications: String, 
-    bodyType: { type: String, enum: ['SUV','Sedan','Hatchback','Crossover','Pickup','MPV'], required: true },
-    seats: { type: Number, default: 5 }, 
-    doors: { type: Number, default: 5 },
-    warrantyYears: { type: Number, default: 10 }, 
-    description: String,
-    imageUrl: String,
-    variants: [VehicleVariantSchema]
-}, { timestamps: true });
+  @Column({ type: "varchar", length: 20 })
+  body_type!: VehicleBodyType;
 
-export const VehicleModel = model('Vehicle', VehicleSchema);
+  @Column({ default: 5 })
+  seats!: number;
+
+  @Column({ default: 5 })
+  doors!: number;
+
+  @Column({ default: 10 })
+  warranty_years!: number;
+
+  @Column({ type: "text", nullable: true })
+  description!: string;
+
+  @Column({ type: "simple-json", nullable: true })
+  image_urls!: string[];
+
+  @CreateDateColumn({ type: "timestamp" })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: "timestamp", nullable: true })
+  updated_at!: Date;
+
+  @OneToMany(() => VehicleVariant, (variant) => variant.vehicle, {
+    cascade: true,
+  })
+  variants!: VehicleVariant[];
+}

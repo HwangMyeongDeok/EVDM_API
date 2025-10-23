@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppError } from './AppError';
-import config from '../../config';
 import { UserRole } from '../../modules/user/user.interface';
+import { ENV } from '../../config';
 
 
 declare global {
@@ -27,7 +27,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   try {
     const token = authHeader.split(' ')[1];
 
-    const decodedPayload = jwt.verify(token, config.jwt.secret) as any;
+    const decodedPayload = jwt.verify(token, ENV.JWT_SECRET!) as any;
 
     req.user = {
       id: decodedPayload.id,

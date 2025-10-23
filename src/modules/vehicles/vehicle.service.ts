@@ -1,13 +1,13 @@
 import { AppError } from '../../common/middlewares/AppError';
 import VehicleRepository from './vehicle.repository';
-import { IVehicle } from './vehicle.interface';
+import { Vehicle } from './vehicle.model';
 
 class VehicleService {
-  public async getAllVehicles(): Promise<IVehicle[]> {
+  public async getAllVehicles(): Promise<Vehicle[]> {
     return VehicleRepository.findAll();
   }
 
-  public async getVehicleById(id: string): Promise<IVehicle> {
+  public async getVehicleById(id: number): Promise<Vehicle> {
     const vehicle = await VehicleRepository.findById(id);
 
     if (!vehicle) {

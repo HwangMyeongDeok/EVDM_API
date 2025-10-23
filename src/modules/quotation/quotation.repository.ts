@@ -1,29 +1,45 @@
-import { IQuotation } from './quotation.interface';
-import { QuotationModel } from './quotation.model';
+import { AppDataSource } from "../../config/data-source";
+import { Quotation } from "./quotation.model";
 
 class QuotationRepository {
+  private repo = AppDataSource.getRepository(Quotation);
 
-  public async create(data: Partial<IQuotation>): Promise<IQuotation> {
-    const quotation = new QuotationModel(data);
-    return quotation.save();
+  async create(data: Partial<Quotation>): Promise<Quotation> {
+    const quotation = this.repo.create(data);
+    return await this.repo.save(quotation);
   }
 
-  public async findById(id: string): Promise<IQuotation | null> {
-    return QuotationModel.findById(id)
-      .populate('customer', 'fullName phone')
-      .populate('staff', 'fullName');
+  async findById(id: number): Promise<Quotation | null> {
+    return await this.repo.findOne({
+      where: { quotation_id: id },
+      relations: ["dealer", "customer", "user", "items", "items.variant"],
+    });
   }
 
-  public async findAllByDealer(dealerId: string): Promise<IQuotation[]> {
-    return QuotationModel.find({ dealer: dealerId }).sort({ createdAt: -1 });
+  async findAllByDealer(dealerId: number): Promise<Quotation[]> {
+    return await this.repo.find({
+      where: { dealer: { dealer_id: dealerId } },
+      relations: ["dealer", "customer", "user", "items"],
+      order: { created_at: "DESC" },
+    });
   }
 
-  public async updateById(id: string, updateData: Partial<IQuotation>): Promise<IQuotation | null> {
-    return QuotationModel.findByIdAndUpdate(id, updateData, { new: true }); 
+  async updateById(
+    id: number,
+    updateData: Partial<Quotation>
+  ): Promise<Quotation | null> {
+    const quotation = await this.repo.findOne({
+      where: { quotation_id: id },
+    });
+    if (!quotation) return null;
+
+    Object.assign(quotation, updateData);
+    return await this.repo.save(quotation);
   }
 
-  public async deleteById(id: string): Promise<any> {
-    return QuotationModel.deleteOne({ _id: id });
+  async deleteById(id: number): Promise<boolean> {
+    const result = await this.repo.delete(id);
+    return result.affected !== 0;
   }
 }
 

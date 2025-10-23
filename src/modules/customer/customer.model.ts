@@ -1,12 +1,40 @@
-import { Schema, model } from 'mongoose';
-import { ICustomer } from './customer.interface';
+import {
+  Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany,
+  JoinColumn, CreateDateColumn, UpdateDateColumn
+} from 'typeorm';
+import { Dealer } from '../dealer/dealer.model';
+import { CustomerAttachment } from '../customer-attachment/customer-attachment.model';
 
-const CustomerSchema = new Schema<ICustomer>({
-  fullName: { type: String, required: true },
-  phone: { type: String, required: true },
-  email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
-  address: { type: String },
-  dealer: { type: Schema.Types.ObjectId, ref: 'Dealer', required: true },
-}, { timestamps: true });
+@Entity({ name: 'customers' })
+export class Customer {
+  @PrimaryGeneratedColumn()
+  customer_id!: number;
 
-export const CustomerModel = model<ICustomer>('Customer', CustomerSchema);
+  @Column({ length: 100 })
+  full_name!: string;
+
+  @Column({ length: 20, nullable: true, unique: true })
+  phone!: string;
+
+  @Column({ length: 100, nullable: true })
+  email!: string;
+
+  @Column({ type: 'text', nullable: true })
+  address!: string;
+
+  @Column()
+  dealer_id!: number;
+
+  @ManyToOne(() => Dealer)
+  @JoinColumn({ name: 'dealer_id' })
+  dealer!: Dealer;
+
+  @OneToMany(() => CustomerAttachment, (att) => att.customer)
+  attachments!: CustomerAttachment[];
+
+  @CreateDateColumn({ type: 'timestamp' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  updated_at!: Date;
+}

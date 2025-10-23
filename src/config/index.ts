@@ -1,21 +1,15 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 dotenv.config();
 
-const config = {
-  port: process.env.PORT || 4000,
+export const ENV = {
+  DB_SERVER: process.env.DB_SERVER || "",
+  DB_NAME: process.env.DB_NAME || "",
+  DB_USER: process.env.DB_USER || "",
+  DB_PASSWORD: process.env.DB_PASSWORD || "",
+  DB_PORT: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 4000,
+  DB_INSTANCE: process.env.DB_INSTANCE || "",
 
-  mongoUri: process.env.MONGODB_URI as string,
-
-  jwt: {
-    secret: process.env.JWT_SECRET as string,
-    expiresIn: process.env.JWT_EXPIRES_IN as string,
-  },
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
 };
-
-if (!config.mongoUri || !config.jwt.secret) {
-  console.error("FATAL ERROR: Missing required environment variables.");
-  process.exit(1);
-}
-
-export default config;

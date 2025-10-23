@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import vehicleRoute from './vehicles/vehicle.route'; 
-
+import quotationRoute from './quotation/quotation.route';
 const router = Router();
 
 interface IRoute {
@@ -10,6 +10,7 @@ interface IRoute {
 
 const appRoutes: IRoute[] = [
     { path: '/vehicles', route: vehicleRoute },
+    { path: '/quotations', route: quotationRoute },
 ];
 
 appRoutes.forEach((route) => {
