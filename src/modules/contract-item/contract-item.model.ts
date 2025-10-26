@@ -45,7 +45,4 @@ export class ContractItem {
 
   @Column("decimal", { precision: 15, scale: 2 })
   line_total!: number;
-
-  @OneToMany(() => ContractItem, (item) => item.contract, { cascade: true })
-  items!: ContractItem[];
 }

@@ -1,45 +1,45 @@
 import { AppDataSource } from "../../config/data-source";
 import { Quotation } from "./quotation.model";
+import { In } from "typeorm";
 
-class QuotationRepository {
+export class QuotationRepository {
   private repo = AppDataSource.getRepository(Quotation);
 
-  async create(data: Partial<Quotation>): Promise<Quotation> {
-    const quotation = this.repo.create(data);
+  async save(quotation: Quotation): Promise<Quotation> {
     return await this.repo.save(quotation);
   }
 
   async findById(id: number): Promise<Quotation | null> {
-    return await this.repo.findOne({
+    return this.repo.findOne({
       where: { quotation_id: id },
-      relations: ["dealer", "customer", "user", "items", "items.variant"],
+      relations: [
+        "dealer",
+        "customer",
+        "user",
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+      ],
     });
   }
 
   async findAllByDealer(dealerId: number): Promise<Quotation[]> {
-    return await this.repo.find({
-      where: { dealer: { dealer_id: dealerId } },
-      relations: ["dealer", "customer", "user", "items"],
+    return this.repo.find({
+      where: { dealer_id: dealerId },
+      relations: ["dealer", "customer", "user", "items", "items.variant"],
       order: { created_at: "DESC" },
     });
   }
 
-  async updateById(
-    id: number,
-    updateData: Partial<Quotation>
-  ): Promise<Quotation | null> {
-    const quotation = await this.repo.findOne({
-      where: { quotation_id: id },
-    });
-    if (!quotation) return null;
-
-    Object.assign(quotation, updateData);
-    return await this.repo.save(quotation);
+  async delete(id: number): Promise<void> {
+    await this.repo.delete(id);
   }
 
-  async deleteById(id: number): Promise<boolean> {
-    const result = await this.repo.delete(id);
-    return result.affected !== 0;
+  async findByIds(ids: number[]): Promise<Quotation[]> {
+    return this.repo.find({
+      where: { quotation_id: In(ids) },
+      relations: ["items", "items.variant"],
+    });
   }
 }
 

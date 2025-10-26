@@ -68,17 +68,17 @@ export class Contract {
   @JoinColumn({ name: "user_id" })
   user!: User;
 
-  @OneToMany(() => ContractItem, (item) => item.contract)
+  @OneToMany(() => ContractItem, (item) => item.contract, { cascade: true })
   items!: ContractItem[];
 
   @Column({ nullable: true })
   approved_by!: number;
 
   @Column({ type: "date" })
-  contract_date!: Date;
+  contract_date!: Date | null;
 
   @Column({ type: "date", nullable: true })
-  delivery_date!: Date;
+  delivery_date!: Date  | null;
 
   @Column({ type: "varchar", length: 30, default: ContractStatus.DRAFT })
   status!: ContractStatus;

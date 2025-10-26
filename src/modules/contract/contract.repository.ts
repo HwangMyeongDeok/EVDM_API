@@ -1,22 +1,38 @@
-import { IContract } from './contract.interface';
-import { ContractModel } from './contract.model';
+import { AppDataSource } from "../../config/data-source";
+import { Contract } from "./contract.model";
+import { In } from "typeorm";
 
-class ContractRepository {
-  public async create(data: Partial<IContract>): Promise<IContract> {
-    const contract = new ContractModel(data);
-    return contract.save();
+export class ContractRepository {
+  private repo = AppDataSource.getRepository(Contract);
+
+  async save(contract: Contract): Promise<Contract> {
+    return await this.repo.save(contract);
   }
 
-  public async findById(id: string): Promise<IContract | null> {
-    return ContractModel.findById(id).populate('customer staff');
+  async findById(id: number): Promise<Contract | null> {
+    return this.repo.findOne({
+      where: { contract_id: id },
+      relations: [
+        "dealer",
+        "customer",
+        "user",
+        "quotation",
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+      ],
+    });
   }
 
-  public async findByQuotationId(quotationId: string): Promise<IContract | null> {
-    return ContractModel.findOne({ quotation: quotationId });
+  async findByQuotationId(id: number): Promise<Contract | null> {
+    return this.repo.findOne({ where: { quotation_id: id } });
   }
 
-  public async updateById(id: string, updateData: Partial<IContract>): Promise<IContract | null> {
-    return ContractModel.findByIdAndUpdate(id, updateData, { new: true });
+  async findByIds(ids: number[]): Promise<Contract[]> {
+    return this.repo.find({
+      where: { contract_id: In(ids) },
+      relations: ["items", "items.variant"],
+    });
   }
 }
 

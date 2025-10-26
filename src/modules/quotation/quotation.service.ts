@@ -1,137 +1,137 @@
 import { AppError } from "../../common/middlewares/AppError";
-import { Quotation, QuotationStatus } from "./quotation.model";
 import QuotationRepository from "./quotation.repository";
-import { CreateQuotationDto } from "./quotation.dto";
-import { AppDataSource } from "../../config/data-source";
-import { VehicleVariant } from "../vehicle-variant/vehicle-variant.model";
-import { Customer } from "../customer/customer.model";
-import { Dealer } from "../dealer/dealer.model";
-import { User } from "../user/user.model";
+import { Quotation, QuotationStatus } from "./quotation.model";
 import { QuotationItem } from "../quotation-item/quotation-item.model";
+import { CreateQuotationDto } from "./dto/create-quotation.dto";
+import { UpdateQuotationDto } from "./dto/update-quotation.dto";
+import { AppDataSource } from "../../config/data-source";
 
 export class QuotationService {
-  private quotationRepo = QuotationRepository;
-  private variantRepo = AppDataSource.getRepository(VehicleVariant);
+  private repo = QuotationRepository;
+  private variantRepo = AppDataSource.getRepository("VehicleVariant");
 
-  // 🟢 Tạo mới báo giá
-  public async create(
-    userId: number,
-    dealerId: number,
-    input: CreateQuotationDto
-  ): Promise<Quotation> {
-    if (!input.items?.length) {
-      throw new AppError("Quotation must have at least one item", 400);
-    }
+  async create(dto: CreateQuotationDto, userId: number, dealerId: number): Promise<Quotation> {
+    if (!dto.items?.length) throw new AppError("Items required", 400);
 
-    const processedItems = [];
+    const items: QuotationItem[] = [];
+    let subtotal = 0;
 
-    for (const item of input.items) {
-      const variant = await this.variantRepo.findOne({
-        where: { variant_id: item.variantId },
+    for (const item of dto.items) {
+      const variant: any = await this.variantRepo.findOne({
+        where: { variant_id: item.variant_id },
         relations: ["vehicle"],
       });
-
-      if (!variant) {
-        throw new AppError(`No variant found with id ${item.variantId}`, 404);
-      }
+      if (!variant) throw new AppError(`Variant ${item.variant_id} not found`, 404);
 
       const unitPrice = Number(variant.retail_price);
-      if (isNaN(unitPrice) || unitPrice <= 0) {
-        throw new AppError(`Invalid price for variant ${item.variantId}`, 400);
-      }
+      const lineTotal = unitPrice * item.quantity;
+      subtotal += lineTotal;
 
-      const lineTotal = item.quantity * unitPrice;
-
-      processedItems.push({
-        variant,
-        description: `${variant.vehicle.model_name} - ${variant.version} (${variant.color})`,
-        quantity: item.quantity,
-        unit_price: unitPrice,
-        discount_amount: 0,
-        line_total: lineTotal,
-      });
+      const qi = new QuotationItem();
+      qi.variant_id = variant.variant_id;
+      qi.quantity = item.quantity;
+      qi.unit_price = unitPrice;
+      qi.line_total = lineTotal;
+      qi.description = `${variant.vehicle.model_name} - ${variant.version}`;
+      qi.discount_amount = 0;
+      items.push(qi);
     }
 
-    const subtotal = processedItems.reduce((sum, i) => sum + i.line_total, 0);
     const taxRate = 10;
     const taxAmount = subtotal * (taxRate / 100);
     const totalAmount = subtotal + taxAmount;
 
-    const quotationNumber = `Q-${Date.now()}-${Math.floor(
-      Math.random() * 1000
-    )
-      .toString()
-      .padStart(3, "0")}`;
+    const quotation = new Quotation();
+    quotation.quotation_number = this.generateCode();
+    quotation.customer_id = dto.customer_id;
+    quotation.dealer_id = dealerId;
+    quotation.user_id = userId;
+    quotation.status = QuotationStatus.DRAFT;
+    quotation.subtotal = subtotal;
+    quotation.tax_rate = taxRate;
+    quotation.tax_amount = taxAmount;
+    quotation.discount_total = 0;
+    quotation.total_amount = totalAmount;
+    quotation.notes = dto.notes || "";
+    quotation.items = items;
 
-    const quotation = await this.quotationRepo.create({
-      quotation_number: quotationNumber,
-      customer: { customer_id: input.customerId } as Customer,
-      dealer: { dealer_id: dealerId } as Dealer,
-      user: { user_id: userId } as User,
-      items: processedItems as QuotationItem[],
-      subtotal,
-      tax_rate: taxRate,
-      tax_amount: taxAmount,
-      discount_total: 0,
-      total_amount: totalAmount,
-      notes: input.notes,
-      status: QuotationStatus.DRAFT,
-    });
-
-    return quotation;
+    return await this.repo.save(quotation);
   }
 
-  public async getAllByDealer(dealerId: number): Promise<Quotation[]> {
-    return await this.quotationRepo.findAllByDealer(dealerId);
+  async update(id: number, dto: UpdateQuotationDto, dealerId: number): Promise<Quotation> {
+    const quotation = await this.repo.findById(id);
+    if (!quotation || quotation.dealer_id !== dealerId) throw new AppError("Not found", 404);
+    if (quotation.status !== QuotationStatus.DRAFT) throw new AppError("Cannot update", 400);
+
+    if (dto.items) {
+      const items: QuotationItem[] = [];
+      let subtotal = 0;
+
+      for (const item of dto.items) {
+        const variant: any = await this.variantRepo.findOne({ where: { variant_id: item.variant_id } });
+        if (!variant) throw new AppError(`Variant ${item.variant_id} not found`, 404);
+
+        const lineTotal = Number(variant.retail_price) * item.quantity;
+        subtotal += lineTotal;
+
+        const qi = new QuotationItem();
+        qi.variant_id = variant.variant_id;
+        qi.quantity = item.quantity;
+        qi.unit_price = Number(variant.retail_price);
+        qi.line_total = lineTotal;
+        items.push(qi);
+      }
+
+      const taxAmount = subtotal * 0.1;
+      quotation.subtotal = subtotal;
+      quotation.tax_amount = taxAmount;
+      quotation.total_amount = subtotal + taxAmount;
+      quotation.items = items;
+    }
+
+    if (dto.notes !== undefined) quotation.notes = dto.notes || "";
+
+    return await this.repo.save(quotation);
   }
 
-  public async getById(id: number): Promise<Quotation> {
-    const quotation = await this.quotationRepo.findById(id);
-    if (!quotation) {
-      throw new AppError("Quotation not found", 404);
-    }
-    return quotation;
+  async send(id: number, dealerId: number): Promise<Quotation> {
+    const quotation = await this.repo.findById(id);
+    if (!quotation || quotation.dealer_id !== dealerId) throw new AppError("Not found", 404);
+    if (quotation.status !== QuotationStatus.DRAFT) throw new AppError("Invalid status", 400);
+
+    quotation.status = QuotationStatus.SENT;
+    return await this.repo.save(quotation);
   }
 
-  public async update(
-    id: number,
-    updateData: Partial<Quotation>
-  ): Promise<Quotation> {
-    const quotation = await this.getById(id);
+  async approve(id: number, managerId: number, dealerId: number): Promise<Quotation> {
+    const quotation = await this.repo.findById(id);
+    if (!quotation || quotation.dealer_id !== dealerId) throw new AppError("Not found", 404);
+    if (quotation.status !== QuotationStatus.SENT) throw new AppError("Invalid status", 400);
 
-    if (quotation.status !== "DRAFT") {
-      throw new AppError(
-        "Cannot update a quotation that is not in DRAFT status",
-        400
-      );
-    }
-
-    updateData.updated_at = new Date();
-    const updatedQuotation = await this.quotationRepo.updateById(
-      id,
-      updateData
-    );
-    if (!updatedQuotation) {
-      throw new AppError("Update failed", 400);
-    }
-
-    return updatedQuotation;
+    quotation.status = QuotationStatus.APPROVED;
+    quotation.approved_by = managerId;
+    return await this.repo.save(quotation);
   }
 
-  public async delete(id: number): Promise<void> {
-    const quotation = await this.getById(id);
+  async delete(id: number, dealerId: number): Promise<void> {
+    const quotation = await this.repo.findById(id);
+    if (!quotation || quotation.dealer_id !== dealerId) throw new AppError("Not found", 404);
+    if (quotation.status !== QuotationStatus.DRAFT) throw new AppError("Cannot delete", 400);
+    await this.repo.delete(id);
+  }
 
-    if (quotation.status !== "DRAFT") {
-      throw new AppError(
-        "Cannot delete a quotation that is not in DRAFT status",
-        400
-      );
-    }
+  async getById(id: number): Promise<Quotation> {
+    const q = await this.repo.findById(id);
+    if (!q) throw new AppError("Not found", 404);
+    return q;
+  }
 
-    const deleted = await this.quotationRepo.deleteById(id);
-    if (!deleted) {
-      throw new AppError("Failed to delete quotation", 400);
-    }
+  async getAllByDealer(dealerId: number): Promise<Quotation[]> {
+    return this.repo.findAllByDealer(dealerId);
+  }
+
+  private generateCode(): string {
+    return `Q-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
   }
 }
 

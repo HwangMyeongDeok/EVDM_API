@@ -36,6 +36,9 @@ export class VehicleUnit {
   @Column({ type: 'date', nullable: true })
   import_date!: Date;
 
+  @Column({ length: 20, nullable: true })
+  license_plate!: string;
+
   @Column({ type: 'varchar', length: 20, default: VehicleUnitStatus.IN_TRANSIT })
   status!: VehicleUnitStatus;
 

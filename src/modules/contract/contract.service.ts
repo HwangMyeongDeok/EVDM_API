@@ -1,120 +1,200 @@
 import { AppError } from "../../common/middlewares/AppError";
 import ContractRepository from "./contract.repository";
+import {
+  Contract,
+  ContractStatus,
+  PaymentStatus,
+  PaymentPlan,
+} from "./contract.model";
 import QuotationRepository from "../quotation/quotation.repository";
-import { IContract } from "./contract.interface";
-import { VehicleModel } from "../vehicles/vehicle.model";
+import { QuotationStatus } from "../quotation/quotation.model";
+import { CreateFromQuotationDto } from "./dto/create-from-quotation.dto";
+import { CreateManualDto } from "./dto/create-manual.dto";
+import { UploadAttachmentDto } from "./dto/upload-attachment.dto";
+import { MakePaymentDto } from "./dto/make-payment.dto";
+import { DeliverContractDto } from "./dto/deliver-contract.dto";
+import { ContractItem } from "../contract-item/contract-item.model";
+import {
+  CustomerAttachment,
+  DocumentType,
+} from "../customer-attachment/customer-attachment.model";
+import {
+  VehicleUnit,
+  VehicleUnitStatus,
+} from "../vehicle-unit/vehicle-unit.model";
+import { Payment, PaymentMethod } from "../payment/payment.model";
+import { AppDataSource } from "../../config/data-source";
 
-class ContractService {
-  public async createContract(
-    quotationId: string,
-    staffId: string
-  ): Promise<IContract> {
-    const existingContract = await ContractRepository.findByQuotationId(
-      quotationId
-    );
-    if (existingContract) {
-      throw new AppError("contract already exists", 409);
-    }
+export class ContractService {
+  private contractRepo = ContractRepository;
+  private quotationRepo = QuotationRepository;
 
-    const quotation = await QuotationRepository.findById(quotationId);
-    if (!quotation) {
-      throw new AppError("no quotation found", 404);
-    }
+  async createFromQuotation(
+    quotationId: number,
+    dto: CreateFromQuotationDto,
+    userId: number,
+    dealerId: number
+  ): Promise<Contract> {
+    const quotation = await this.quotationRepo.findById(quotationId);
+    if (!quotation) throw new AppError("Quotation not found", 404);
+    if (quotation.dealer_id !== dealerId) throw new AppError("Forbidden", 403);
+    if (![QuotationStatus.SENT, QuotationStatus.APPROVED].includes(quotation.status))
+      throw new AppError("Quotation must be SENT or APPROVED", 400);
 
-    if (quotation.status !== "APPROVED") {
-      throw new AppError("quotation is not approved", 400);
-    }
+    const exist = await this.contractRepo.findByQuotationId(quotationId);
+    if (exist) throw new AppError("Contract already exists", 400);
 
-    const contractNumber = `HD-${quotation.quotationNumber}`;
-    const remainingAmount = quotation.totalAmount;
+    const deposit = dto.payment_plan === "DEPOSIT" ? dto.deposit_amount || 0 : 0;
+    const finalAmount = quotation.total_amount! - deposit;
 
-    const newContractData: Partial<IContract> = {
-      contractNumber,
-      quotation: quotation._id,
-      dealer: quotation.dealer,
-      customer: quotation.customer,
-      staff: staffId,
-      contractDate: new Date(),
-      status: "PENDING_APPROVAL",
-      totalAmount: quotation.totalAmount,
-      discountAmount: quotation.discountTotal,
-      finalAmount: quotation.totalAmount - quotation.discountTotal,
-      paymentStatus: "UNPAID",
-      paymentPlan: "DEPOSIT",
-      remainingAmount,
-      items: quotation.items.map((item) => ({ ...(item as any).toObject() })),
-    };
+    const contract = new Contract();
+    contract.contract_code = this.generateCode();
+    contract.quotation_id = quotationId;
+    contract.dealer_id = dealerId;
+    contract.customer_id = quotation.customer_id;
+    contract.user_id = userId;
+    contract.contract_date = new Date();
+    contract.delivery_date = dto.delivery_date ? new Date(dto.delivery_date) : null;
+    contract.total_amount = quotation.total_amount!;
+    contract.discount_amount = quotation.discount_total!;
+    contract.final_amount = finalAmount;
+    contract.payment_plan = dto.payment_plan as PaymentPlan;
+    contract.deposit_amount = deposit;
+    contract.remaining_amount = finalAmount;
+    contract.payment_status = PaymentStatus.UNPAID;
+    contract.status = ContractStatus.PENDING_APPROVAL;
 
-    return ContractRepository.create(newContractData);
-  }
-
-  public async approveContract(
-    contractId: string,
-    managerId: string
-  ): Promise<IContract> {
-    const contract = await ContractRepository.findById(contractId);
-    if (!contract) {
-      throw new AppError("no contract found", 404);
-    }
-
-    if (contract.status !== "PENDING_APPROVAL") {
-      throw new AppError("contract is not pending approval", 400);
-    }
-
-    const updatedData: Partial<IContract> = {
-      status: "SIGNED",
-      approvedBy: managerId,
-    };
-
-    const updated = await ContractRepository.updateById(
-      contractId,
-      updatedData
-    );
-    if (!updated) {
-      throw new AppError("failed to update contract", 500);
-    }
-    return updated;
-  }
-
-  public async handoverVehicle(
-    contractId: string,
-    vin: string
-  ): Promise<IContract> {
-    const contract = await ContractRepository.findById(contractId);
-    if (!contract) {
-      throw new AppError("no contract found", 404);
-    }
-
-    if (contract.status !== "SIGNED") {
-      throw new AppError("contract is not signed", 400);
-    }
-    if (contract.paymentStatus !== "PAID") {
-      throw new AppError("contract is not paid", 400);
-    }
-
-    const updateResult = await VehicleModel.updateOne(
-      { "variants.units.vin": vin },
-      { $set: { "variants.$[].units.$[unit].status": "SOLD" } },
-      { arrayFilters: [{ "unit.vin": vin }] }
-    );
-
-    if (updateResult.modifiedCount === 0) {
-      throw new AppError(`Vehicle with VIN ${vin} not found`, 404);
-    }
-
-    contract.status = "COMPLETED";
-    contract.deliveryDate = new Date();
-
-    const updated = await ContractRepository.updateById(contractId, {
-      status: "COMPLETED",
-      deliveryDate: new Date(),
+    contract.items = quotation.items.map((qi) => {
+      const ci = new ContractItem();
+      ci.variant_id = qi.variant_id;
+      ci.quantity = qi.quantity;
+      ci.unit_price = qi.unit_price;
+      ci.line_total = qi.line_total;
+      ci.color = qi.variant.color;
+      ci.description = qi.description || "";
+      ci.discount_amount = qi.discount_amount || 0;
+      return ci;
     });
 
-    if (!updated) {
-      throw new AppError("failed to update contract status", 500);
-    }
+    return await this.contractRepo.save(contract);
+  }
 
-    return updated;
+  async createManual(dto: CreateManualDto, userId: number, dealerId: number): Promise<Contract> {
+    const deposit = dto.payment_plan === "DEPOSIT" ? dto.deposit_amount || 0 : 0;
+    const finalAmount = dto.total_amount - deposit;
+
+    const contract = new Contract();
+    contract.contract_code = this.generateCode();
+    contract.dealer_id = dealerId;
+    contract.customer_id = dto.customer_id;
+    contract.user_id = userId;
+    contract.contract_date = new Date();
+    contract.delivery_date = dto.delivery_date ? new Date(dto.delivery_date) : null;
+    contract.total_amount = dto.total_amount;
+    contract.discount_amount = 0;
+    contract.final_amount = finalAmount;
+    contract.payment_plan = dto.payment_plan as PaymentPlan;
+    contract.deposit_amount = deposit;
+    contract.remaining_amount = finalAmount;
+    contract.payment_status = PaymentStatus.UNPAID;
+    contract.status = ContractStatus.PENDING_APPROVAL;
+
+    contract.items = dto.items.map((i) => {
+      const ci = new ContractItem();
+      ci.variant_id = i.variant_id;
+      ci.quantity = i.quantity;
+      ci.unit_price = i.unit_price;
+      ci.line_total = i.quantity * i.unit_price;
+      ci.color = i.color || "";
+      ci.description = i.description || "";
+      ci.discount_amount = 0;
+      return ci;
+    });
+
+    return await this.contractRepo.save(contract);
+  }
+
+  async uploadAttachment(contractId: number, dto: UploadAttachmentDto, dealerId: number) {
+    const contract = await this.contractRepo.findById(contractId);
+    if (!contract || contract.dealer_id !== dealerId)
+      throw new AppError("Contract not found", 404);
+
+    const attachment = new CustomerAttachment();
+    attachment.customer_id = contract.customer_id;
+    attachment.document_type = dto.type as DocumentType;
+    attachment.attachment_url = dto.file_url;
+
+    const saved = await AppDataSource.getRepository(CustomerAttachment).save(attachment);
+    return { success: true, message: "Attachment uploaded", attachment_id: saved.attachment_id };
+  }
+
+  async makePayment(contractId: number, dto: MakePaymentDto, userId: number, dealerId: number) {
+    if (dto.amount <= 0) throw new AppError("Amount must be greater than 0", 400);
+
+    const contract = await this.contractRepo.findById(contractId);
+    if (!contract || contract.dealer_id !== dealerId)
+      throw new AppError("Contract not found", 404);
+
+    const payment = new Payment();
+    payment.contract_id = contractId;
+    payment.amount = dto.amount;
+    payment.payment_method = dto.method as PaymentMethod;
+    payment.created_at = new Date();
+
+    await AppDataSource.getRepository(Payment).save(payment);
+
+    const totalPaid = (contract.deposit_amount || 0) + dto.amount;
+    contract.payment_status = totalPaid >= contract.final_amount ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
+    contract.remaining_amount = contract.final_amount - totalPaid;
+
+    await this.contractRepo.save(contract);
+
+    return { success: true, payment, contract };
+  }
+
+  async deliver(contractId: number, dto: DeliverContractDto, dealerId: number) {
+    const contract = await this.contractRepo.findById(contractId);
+    if (!contract || contract.dealer_id !== dealerId)
+      throw new AppError("Contract not found", 404);
+    if (contract.payment_status !== PaymentStatus.PAID)
+      throw new AppError("Contract not fully paid", 400);
+
+    const unit = await AppDataSource.getRepository(VehicleUnit).findOne({
+      where: { vin: dto.vin, status: VehicleUnitStatus.IN_DEALER },
+    });
+    if (!unit) throw new AppError("Vehicle not in stock", 400);
+
+    unit.status = VehicleUnitStatus.SOLD;
+    unit.license_plate = dto.license_plate || "";
+    await AppDataSource.getRepository(VehicleUnit).save(unit);
+
+    contract.status = ContractStatus.COMPLETED;
+    contract.delivery_date = new Date();
+    await this.contractRepo.save(contract);
+
+    return { success: true, message: "Delivery completed", contract };
+  }
+
+  async approve(contractId: number, managerId: number, dealerId: number) {
+    const contract = await this.contractRepo.findById(contractId);
+    if (!contract || contract.dealer_id !== dealerId)
+      throw new AppError("Contract not found", 404);
+    if (contract.status !== ContractStatus.PENDING_APPROVAL)
+      throw new AppError("Invalid status", 400);
+
+    contract.status = ContractStatus.PENDING_SIGN;
+    contract.approved_by = managerId;
+    return await this.contractRepo.save(contract);
+  }
+
+  async getById(id: number): Promise<Contract> {
+    const contract = await this.contractRepo.findById(id);
+    if (!contract) throw new AppError("Contract not found", 404);
+    return contract;
+  }
+
+  private generateCode(): string {
+    return `CT-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
   }
 }
 

@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import CustomerController from './customer.controller';
 import { authMiddleware, checkRole } from '../../common/middlewares/auth.middleware';
-import { UserRole } from '../user/user.interface';
 import { validate } from '../../common/middlewares/validate.middleware';
 import { createCustomerSchema } from './customer.validation';
+import { UserRole } from '../user/user.model';
 
 const router = Router();
 const customerController = new CustomerController();
 
-const allowedRoles: UserRole[] = ['DEALER_STAFF', 'DEALER_MANAGER'];
+const allowedRoles: UserRole[] = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
 
 router.post(
   '/',
@@ -16,6 +16,14 @@ router.post(
   checkRole(allowedRoles),
   validate(createCustomerSchema),
   customerController.create
+);
+router.get("/search", checkRole(allowedRoles), customerController.search);
+
+router.get(
+  '/:id',
+  authMiddleware,
+  checkRole(allowedRoles),
+  customerController.getById
 );
 
 export default router;

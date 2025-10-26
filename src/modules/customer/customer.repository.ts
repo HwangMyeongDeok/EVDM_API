@@ -1,18 +1,39 @@
-import { CustomerModel } from './customer.model';
-import { ICustomer } from './customer.interface';
+import { AppDataSource } from "../../config/data-source";
+import { Customer } from "./customer.model";
+import { Like } from "typeorm";
 
-class CustomerRepository {
-  public async create(customerData: Partial<ICustomer>): Promise<ICustomer> {
-    const customer = new CustomerModel(customerData);
-    return customer.save();
+export class CustomerRepository {
+  private repo = AppDataSource.getRepository(Customer);
+
+  async findById(id: number): Promise<Customer | null> {
+    return this.repo.findOne({
+      where: { customer_id: id },
+      relations: ["dealer", "attachments"],
+    });
   }
 
-  public async findById(id: string): Promise<ICustomer | null> {
-    return CustomerModel.findById(id);
+  async findByPhone(phone: string): Promise<Customer | null> {
+    return this.repo.findOne({
+      where: { phone },
+      relations: ["dealer"],
+    });
   }
 
-  public async findByPhone(phone: string, dealerId: string): Promise<ICustomer | null> {
-    return CustomerModel.findOne({ phone, dealer: dealerId });
+  async create(data: Partial<Customer>): Promise<Customer> {
+    const customer = this.repo.create(data);
+    return await this.repo.save(customer);
+  }
+
+  async searchByDealer(dealerId: number, query: string): Promise<Customer[]> {
+    return this.repo.find({
+      where: [
+        { dealer_id: dealerId, phone: Like(`%${query}%`) },
+        { dealer_id: dealerId, full_name: Like(`%${query}%`) },
+      ],
+      select: ["customer_id", "full_name", "phone", "email"],
+      take: 10,
+      order: { full_name: "ASC" },
+    });
   }
 }
 

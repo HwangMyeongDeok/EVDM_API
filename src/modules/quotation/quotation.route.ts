@@ -1,49 +1,40 @@
-import e, { Router } from "express";
+import { Router } from "express";
 import QuotationController from "./quotation.controller";
-import { authMiddleware, checkRole } from "../../common/middlewares/auth.middleware";
-import { UserRole } from "../user/user.interface";
+import {
+  authMiddleware,
+  checkRole,
+} from "../../common/middlewares/auth.middleware";
 import { validate } from "../../common/middlewares/validate.middleware";
-import { createQuotationSchema, updateQuotationSchema } from "./quotation.validation";
+import {
+  createQuotationSchema,
+  updateQuotationSchema,
+} from "./quotation.validation";
+import { UserRole } from "../user/user.model";
 
 const router = Router();
-const quotationController = new QuotationController();
-const allowedRoles: UserRole[] = ['DEALER_STAFF', 'DEALER_MANAGER'];
+const ctrl = new QuotationController();
+
+const staff = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
+const manager = [UserRole.DEALER_MANAGER];
 
 router.post(
-  '/',
-  // authMiddleware,
-  // checkRole(allowedRoles),
-  // validate(createQuotationSchema),
-  quotationController.create
-);
-
-router.get(
-  '/',
+  "/",
   authMiddleware,
-  checkRole(allowedRoles),
-  quotationController.getAll
+  checkRole(staff),
+  validate(createQuotationSchema),
+  ctrl.create
 );
-
-router.get(
-  '/:id',
-  authMiddleware,
-  checkRole(allowedRoles),
-  quotationController.getById
-);
-
+router.get("/", authMiddleware, checkRole(staff), ctrl.getAll);
+router.get("/:id", authMiddleware, checkRole(staff), ctrl.getById);
 router.patch(
-  '/:id',
+  "/:id",
   authMiddleware,
-  checkRole(allowedRoles),
+  checkRole(staff),
   validate(updateQuotationSchema),
-  quotationController.update
+  ctrl.update
 );
-
-router.delete(
-  '/:id',
-  authMiddleware,
-  checkRole(allowedRoles),
-  quotationController.delete
-);
+router.post("/:id/send", authMiddleware, checkRole(staff), ctrl.send);
+router.post("/:id/approve", authMiddleware, checkRole(manager), ctrl.approve);
+router.delete("/:id", authMiddleware, checkRole(staff), ctrl.delete);
 
 export default router;

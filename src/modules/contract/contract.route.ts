@@ -3,27 +3,62 @@ import {
   authMiddleware,
   checkRole,
 } from "../../common/middlewares/auth.middleware";
-import { UserRole } from "../user/user.interface";
 import ContractController from "./contract.controller";
 import { validate } from "../../common/middlewares/validate.middleware";
 import {
   approveContractSchema,
-  createContractSchema,
-  handoverContractSchema,
+  createFromQuotationSchema,
+  createManualSchema,
+  uploadAttachmentSchema,
+  makePaymentSchema,
+  deliverContractSchema,
 } from "./contract.validation";
+import { UserRole } from "../user/user.model";
 
 const router = Router();
 const contractController = new ContractController();
 
-const staffRoles: UserRole[] = ["DEALER_STAFF", "DEALER_MANAGER"];
-const managerRoles: UserRole[] = ["DEALER_MANAGER"];
+const staffRoles: UserRole[] = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
+const managerRoles: UserRole[] = [UserRole.DEALER_MANAGER];
 
 router.post(
-  "/",
+  "/from-quotation/:id",
   authMiddleware,
   checkRole(staffRoles),
-  validate(createContractSchema),
-  contractController.createContract
+  validate(createFromQuotationSchema),
+  contractController.createFromQuotation
+);
+
+router.post(
+  "/manual",
+  authMiddleware,
+  checkRole(staffRoles),
+  validate(createManualSchema),
+  contractController.createManual
+);
+
+router.post(
+  "/:id/attachments",
+  authMiddleware,
+  checkRole(staffRoles),
+  validate(uploadAttachmentSchema),
+  contractController.uploadAttachment
+);
+
+router.post(
+  "/:id/pay",
+  authMiddleware,
+  checkRole(staffRoles),
+  validate(makePaymentSchema),
+  contractController.makePayment
+);
+
+router.post(
+  "/:id/deliver",
+  authMiddleware,
+  checkRole(staffRoles),
+  validate(deliverContractSchema),
+  contractController.deliver
 );
 
 router.patch(
@@ -34,11 +69,11 @@ router.patch(
   contractController.approve
 );
 
-router.post(
-  "/:id/handover",
+router.get(
+  "/:id",
   authMiddleware,
   checkRole(staffRoles),
-  validate(handoverContractSchema),
-  contractController.handover
+  contractController.getById
 );
+
 export default router;

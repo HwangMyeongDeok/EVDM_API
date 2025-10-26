@@ -1,20 +1,22 @@
-import { Request, Response, NextFunction } from 'express';
-import PaymentService from './payment.service';
-import { AppError } from '../../common/middlewares/AppError';
+import { Request, Response, NextFunction } from "express";
+import PaymentService from "./payment.service";
 
 class PaymentController {
   public async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const staff = { id: req.user!.id, dealerId: req.user!.dealer! };
-      if (!staff.id || !staff.dealerId) {
-        return next(new AppError('staffId or dealerId not found', 401));
-      }
-      
-      const newPayment = await PaymentService.createPayment(req.body, staff);
-      res.status(201).json({ success: true, data: newPayment });
-    } catch (error) {
-      next(error);
-    }
+      const userId = Number(req.user?.id);
+      const dealerId = Number(req.user?.dealer);
+      const payment = await PaymentService.create(req.body, userId, dealerId);
+      res.status(201).json({ success: true, data: payment });
+    } catch (error) { next(error); }
+  }
+
+  public async getByContract(req: Request, res: Response, next: NextFunction) {
+    try {
+      const contractId = Number(req.params.contractId);
+      const payments = await PaymentService.getByContractId(contractId);
+      res.json({ success: true, count: payments.length, data: payments });
+    } catch (error) { next(error); }
   }
 }
 
