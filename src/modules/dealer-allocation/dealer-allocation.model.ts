@@ -18,7 +18,7 @@ export class DealerVehicleAllocation {
   allocation_id!: number;
 
   @Column({ nullable: true })
-  request_id!: number;
+  request_id!: number | null;
 
   @ManyToOne(() => DealerVehicleRequest, { nullable: true })
   @JoinColumn({ name: 'request_id' })
