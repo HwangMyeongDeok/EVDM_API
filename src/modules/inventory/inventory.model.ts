@@ -18,7 +18,7 @@ export class Inventory {
   variant!: VehicleVariant;
 
   @Column({ nullable: true })
-  dealer_id!: number;
+  dealer_id!: number | null;
 
   @ManyToOne(() => Dealer, { nullable: true })
   @JoinColumn({ name: 'dealer_id' })
