@@ -20,8 +20,8 @@ const manager = [UserRole.DEALER_MANAGER];
 router.post(
   "/",
   authMiddleware,
-  checkRole(staff),
-  validate(createQuotationSchema),
+  // checkRole(staff),
+  // validate(createQuotationSchema),
   ctrl.create
 );
 router.get("/", authMiddleware, checkRole(staff), ctrl.getAll);

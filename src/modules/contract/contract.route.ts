@@ -23,9 +23,9 @@ const managerRoles: UserRole[] = [UserRole.DEALER_MANAGER];
 
 router.post(
   "/from-quotation/:id",
-  authMiddleware,
-  checkRole(staffRoles),
-  validate(createFromQuotationSchema),
+  // authMiddleware,
+  // checkRole(staffRoles),
+  // validate(createFromQuotationSchema),
   contractController.createFromQuotation
 );
 

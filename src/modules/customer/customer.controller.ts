@@ -6,7 +6,7 @@ class CustomerController {
   public async search(req: Request, res: Response, next: NextFunction) {
     try {
       const query = (req.query.query as string) || "";
-      const dealerId = Number(req.user?.dealer);
+      const dealerId = Number(req.user?.dealer_id);
 
       if (!dealerId) throw new AppError("Dealer not found", 400);
 
@@ -24,7 +24,7 @@ class CustomerController {
   public async create(req: Request, res: Response, next: NextFunction) {
     try {
       const { full_name, phone, email, address } = req.body;
-      const dealer_id = Number(req.user?.dealer);
+      const dealer_id = Number(req.user?.dealer_id);
 
       if (!dealer_id) throw new AppError("Dealer not found", 400);
       if (!full_name?.trim()) throw new AppError("full_name is required", 400);

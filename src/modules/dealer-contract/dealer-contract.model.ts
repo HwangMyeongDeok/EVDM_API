@@ -49,9 +49,9 @@ export class DealerContract {
   @Column({ type: 'text', nullable: true })
   remarks!: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime2' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({ type: 'datetime2', nullable: true })
   updated_at!: Date;
 }

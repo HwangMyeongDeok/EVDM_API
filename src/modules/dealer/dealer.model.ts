@@ -76,9 +76,9 @@ export class Dealer {
   @OneToMany(() => SalesReport, (report) => report.dealer)
   reports!: SalesReport[];
 
-  @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  @CreateDateColumn({ type: "datetime2", default: () => "CURRENT_TIMESTAMP" })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: "timestamp", nullable: true })
+  @UpdateDateColumn({ type: "datetime2", nullable: true })
   updated_at!: Date;
 }

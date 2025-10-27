@@ -24,10 +24,10 @@ export class SalesReport {
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime2' })
   period_start!: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime2' })
   period_end!: Date;
 
   @Column('decimal', { precision: 15, scale: 2, nullable: true })
@@ -36,6 +36,6 @@ export class SalesReport {
   @Column({ type: 'int', nullable: true })
   total_orders!: number;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime2' })
   created_at!: Date;
 }

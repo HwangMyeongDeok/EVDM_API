@@ -27,6 +27,6 @@ export class Inventory {
   @Column({ default: 0 })
   quantity!: number;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime2' })
   last_updated!: Date;
 }

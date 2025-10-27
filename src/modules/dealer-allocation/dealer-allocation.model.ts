@@ -44,18 +44,18 @@ export class DealerVehicleAllocation {
   @Column({ type: 'int', nullable: true })
   delivery_batch!: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime2', nullable: true })
   delivery_date!: Date;
 
   @Column({ type: 'varchar', length: 20, default: AllocationStatus.PENDING })
   status!: AllocationStatus;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'datetime2', default: () => 'CURRENT_TIMESTAMP' })
   allocation_date!: Date;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime2' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({ type: 'datetime2', nullable: true })
   updated_at!: Date;
 }

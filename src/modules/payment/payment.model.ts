@@ -73,12 +73,12 @@ export class Payment {
   @Column({ type: 'varchar', length: 20, default: PaymentContext.CUSTOMER })
   payment_context!: PaymentContext;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'datetime2', default: () => 'CURRENT_TIMESTAMP' })
   payment_date!: Date;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime2' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({ type: 'datetime2', nullable: true })
   updated_at!: Date;
 }

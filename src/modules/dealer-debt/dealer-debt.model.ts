@@ -28,12 +28,12 @@ export class DealerDebt {
   @Column({ type: 'varchar', length: 20, default: DealerDebtStatus.PENDING })
   status!: DealerDebtStatus;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime2', nullable: true })
   due_date!: Date;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'datetime2' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({ type: 'datetime2', nullable: true })
   updated_at!: Date;
 }

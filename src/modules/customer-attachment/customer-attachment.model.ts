@@ -37,6 +37,6 @@ export class CustomerAttachment {
   @Column({ type: 'text', nullable: true })
   description!: string;
 
-  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({ type: 'datetime2', default: () => 'CURRENT_TIMESTAMP' })
   uploaded_at!: Date;
 }

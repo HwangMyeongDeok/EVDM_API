@@ -1,17 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppError } from './AppError';
-import { UserRole } from '../../modules/user/user.interface';
 import { ENV } from '../../config';
+import { UserRole } from '../../modules/user/user.model';
 
+interface TokenPayload {
+  user_id: number;
+  role: UserRole;
+  dealer_id?: number | null;
+  email: string;
+}
 
 declare global {
   namespace Express {
     interface Request {
       user?: {
-        id: string;
+        user_id: number;
         role: UserRole;
-        dealer?: string;
+        dealer_id?: number | null;
+        email: string;
       };
     }
   }
@@ -20,35 +27,35 @@ declare global {
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return next(new AppError('Authentication token is missing', 401));
   }
 
   try {
     const token = authHeader.split(' ')[1];
-
-    const decodedPayload = jwt.verify(token, ENV.JWT_SECRET!) as any;
+    const decoded = jwt.verify(token, ENV.JWT_SECRET!) as TokenPayload;
 
     req.user = {
-      id: decodedPayload.id,
-      role: decodedPayload.role,
-      dealer: decodedPayload.dealer,
+      user_id: decoded.user_id,
+      role: decoded.role,
+      dealer_id: decoded.dealer_id,
+      email: decoded.email
     };
-    
+
     next();
   } catch (error) {
-    return next(new AppError('Invalid token or expired', 401));
+    next(new AppError('Invalid or expired token', 401));
   }
 };
 
 export const checkRole = (requiredRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !req.user.role) {
-      return next(new AppError('User role not found', 401));
+    if (!req.user) {
+      return next(new AppError('User not authenticated', 401));
     }
 
     if (!requiredRoles.includes(req.user.role)) {
-      return next(new AppError('Access denied', 403)); 
+      return next(new AppError('Access denied', 403));
     }
 
     next();

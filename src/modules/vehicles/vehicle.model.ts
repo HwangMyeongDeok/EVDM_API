@@ -46,10 +46,10 @@ export class Vehicle {
   @Column({ type: "simple-json", nullable: true })
   image_urls!: string[];
 
-  @CreateDateColumn({ type: "timestamp" })
+  @CreateDateColumn({ type: "datetime2" })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: "timestamp", nullable: true })
+  @UpdateDateColumn({ type: "datetime2", nullable: true })
   updated_at!: Date;
 
   @OneToMany(() => VehicleVariant, (variant) => variant.vehicle, {

@@ -12,7 +12,7 @@ export class QuotationService {
 
   async create(dto: CreateQuotationDto, userId: number, dealerId: number): Promise<Quotation> {
     if (!dto.items?.length) throw new AppError("Items required", 400);
-
+    console.log("first", dto)
     const items: QuotationItem[] = [];
     let subtotal = 0;
 
@@ -43,7 +43,7 @@ export class QuotationService {
 
     const quotation = new Quotation();
     quotation.quotation_number = this.generateCode();
-    quotation.customer_id = dto.customer_id;
+    quotation.customer_id = dto.customer_id || 0;
     quotation.dealer_id = dealerId;
     quotation.user_id = userId;
     quotation.status = QuotationStatus.DRAFT;
