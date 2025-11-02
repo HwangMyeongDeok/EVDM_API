@@ -83,7 +83,7 @@ export class PaymentService {
 
     const savedPayment = await this.repo.save(payment);
 
-    if (dto.payment_method === PaymentMethod.CASH) {
+    if (dto.payment_method === PaymentMethod.CASH || dto.payment_method === PaymentMethod.BANK_TRANSFER) {
       return { payment: savedPayment };
     }
 

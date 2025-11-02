@@ -15,43 +15,40 @@ const vnpay = new VNPay({
 
 class PaymentController {
   public async create(req: Request, res: Response, next: NextFunction) {
-    try {
-      const dto: CreatePaymentDto = req.body;
+  try {
+    const dto: CreatePaymentDto = req.body;
 
-      if (typeof dto.amount !== 'number' || dto.amount <= 0) {
-        throw new AppError("Amount must be a positive number", 400);
-      }
-      if (!dto.payment_method || ![PaymentMethod.BANK_TRANSFER, PaymentMethod.CASH, PaymentMethod.CREDIT_CARD].includes(dto.payment_method)) {
-        throw new AppError("Invalid payment_method", 400);
-      }
-      if (!dto.payment_context || ![PaymentContext.CUSTOMER, PaymentContext.DEALER].includes(dto.payment_context)) {
-        throw new AppError("Invalid payment_context", 400);
-      }
-      if (!dto.contract_id && !dto.customer_id) {
-        throw new AppError("contract_id or customer_id is required", 400);
-      }
-      if (dto.payment_type && ![PaymentType.FULL, PaymentType.INSTALLMENT, PaymentType.DEPOSIT].includes(dto.payment_type)) {
-        throw new AppError("Invalid payment_type", 400);
-      }
-      if (typeof dto.contract_id === 'string') dto.contract_id = Number(dto.contract_id);
-      if (typeof dto.customer_id === 'string') dto.customer_id = Number(dto.customer_id);
-      if (typeof dto.total_amount === 'string') dto.total_amount = Number(dto.total_amount);
-
-      const userId = Number(req.user!.user_id);
-      const dealerId = Number(req.user?.dealer_id);
-      if (isNaN(userId) || isNaN(dealerId)) throw new AppError("Unauthorized", 401);
-
-      const ipAddr = req.ip || '127.0.0.1';
-      const result = await PaymentService.create(dto, userId, dealerId, ipAddr);
-
-      if (result.paymentUrl) {
-        return res.redirect(result.paymentUrl);
-      }
-      res.status(201).json({ success: true, data: result.payment });
-    } catch (error) {
-      next(error);
+    if (typeof dto.amount !== 'number' || dto.amount <= 0) {
+      throw new AppError("Amount must be a positive number", 400);
     }
+    if (!dto.payment_method || ![PaymentMethod.BANK_TRANSFER, PaymentMethod.CASH, PaymentMethod.CREDIT_CARD].includes(dto.payment_method)) {
+      throw new AppError("Invalid payment_method", 400);
+    }
+    if (!dto.payment_context || ![PaymentContext.CUSTOMER, PaymentContext.DEALER].includes(dto.payment_context)) {
+      throw new AppError("Invalid payment_context", 400);
+    }
+    if (!dto.contract_id && !dto.customer_id) {
+      throw new AppError("contract_id or customer_id is required", 400);
+    }
+    if (dto.payment_type && ![PaymentType.FULL, PaymentType.INSTALLMENT, PaymentType.DEPOSIT].includes(dto.payment_type)) {
+      throw new AppError("Invalid payment_type", 400);
+    }
+    if (typeof dto.contract_id === 'string') dto.contract_id = Number(dto.contract_id);
+    if (typeof dto.customer_id === 'string') dto.customer_id = Number(dto.customer_id);
+    if (typeof dto.total_amount === 'string') dto.total_amount = Number(dto.total_amount);
+
+    const userId = Number(req.user!.user_id);
+    const dealerId = Number(req.user?.dealer_id);
+    if (isNaN(userId) || isNaN(dealerId)) throw new AppError("Unauthorized", 401);
+
+    const ipAddr = req.ip || '127.0.0.1';
+    const result = await PaymentService.create(dto, userId, dealerId, ipAddr);
+
+    res.status(201).json({ success: true, data: result.payment, paymentUrl: result.paymentUrl });
+  } catch (error) {
+    next(error);
   }
+}
 
   public async getByContract(req: Request, res: Response, next: NextFunction) {
     try {
