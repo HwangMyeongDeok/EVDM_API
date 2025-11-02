@@ -3,6 +3,30 @@ import CustomerService from "./customer.service";
 import { AppError } from "../../common/middlewares/AppError";
 
 class CustomerController {
+  public async list(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { recent } = req.query;
+      const dealerId = Number(req.user?.dealer_id);
+
+      if (!dealerId) throw new AppError("Dealer not found", 400);
+
+      let customers;
+      if (recent) {
+        const limit = Math.min(parseInt(recent as string) || 10, 100);
+        customers = await CustomerService.getRecent(dealerId, limit);
+      } else {
+        customers = await CustomerService.getRecent(dealerId, 50);
+      }
+
+      res.status(200).json({
+        success: true,
+        data: customers,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   public async search(req: Request, res: Response, next: NextFunction) {
     try {
       const query = (req.query.query as string) || "";

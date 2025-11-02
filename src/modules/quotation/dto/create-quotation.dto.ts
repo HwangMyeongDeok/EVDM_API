@@ -1,6 +1,6 @@
 export class CreateQuotationDto {
   customer_id?: number;
-  customer?: {
+  customer?: { 
     full_name: string;
     phone: string;
     email: string;
@@ -8,9 +8,7 @@ export class CreateQuotationDto {
     paymentTerms?: string;
     notes?: string;
   };
-  items!: Array<{
-    variant_id: number;
-    quantity: number;
-  }>;
+
+  variant_id!: number;
   notes?: string;
 }

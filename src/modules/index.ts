@@ -10,7 +10,8 @@ import dealerAllocationRoute from './dealer-allocation/dealer-allocation.route';
 import dealerRequestRoute from './dealer-request/dealer-request.route';
 import dealerDebtRoute from './dealer-debt/dealer-debt.route';
 import inventoryRoute from './inventory/inventory.route';
-
+import VehicleVariantRoute from './vehicle-variant/vehicle-variant.route';
+import promoteionRoute from './promotion/promotion.route';
 const router = Router();
 
 interface IRoute {
@@ -30,6 +31,8 @@ const appRoutes: IRoute[] = [
   { path: '/dealer-requests', route: dealerRequestRoute },
   { path: '/dealer-debts', route: dealerDebtRoute },
   { path: '/inventory', route: inventoryRoute },
+  { path: '/vehicle-variants', route: VehicleVariantRoute},
+  { path: '/promotions', route: promoteionRoute },
 ];
 
 appRoutes.forEach((route) => {

@@ -29,7 +29,7 @@ export class DealerDebt {
   status!: DealerDebtStatus;
 
   @Column({ type: 'datetime2', nullable: true })
-  due_date!: Date;
+  due_date!: Date | null;
 
   @CreateDateColumn({ type: 'datetime2' })
   created_at!: Date;

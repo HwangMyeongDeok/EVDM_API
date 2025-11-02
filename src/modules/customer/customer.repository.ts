@@ -5,6 +5,14 @@ import { Like } from "typeorm";
 export class CustomerRepository {
   private repo = AppDataSource.getRepository(Customer);
 
+    async getRecent(dealerId: number, limit: number = 10): Promise<Customer[]> {
+    return this.repo.find({
+      where: { dealer_id: dealerId },
+      select: ["customer_id", "full_name", "phone", "email", "address"],
+      order: { created_at: "DESC" },
+      take: limit,
+    });
+  }
   async findById(id: number): Promise<Customer | null> {
     return this.repo.findOne({
       where: { customer_id: id },

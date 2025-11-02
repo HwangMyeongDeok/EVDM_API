@@ -12,8 +12,8 @@ import {
 import { Customer } from "../customer/customer.model";
 import { Dealer } from "../dealer/dealer.model";
 import { User } from "../user/user.model";
-import { QuotationItem } from "../quotation-item/quotation-item.model";
 import { Contract } from "../contract/contract.model";
+import { VehicleVariant } from "../vehicle-variant/vehicle-variant.model";
 
 export enum QuotationStatus {
   DRAFT = "DRAFT",
@@ -51,8 +51,12 @@ export class Quotation {
   @JoinColumn({ name: "user_id" })
   user!: User;
 
-  @OneToMany(() => QuotationItem, (item) => item.quotation, { cascade: true })
-  items!: QuotationItem[];
+  @Column()
+  variant_id!: number;
+
+  @ManyToOne(() => VehicleVariant)
+  @JoinColumn({ name: "variant_id" })
+  variant!: VehicleVariant;
 
   @Column({ type: "varchar", length: 20, default: QuotationStatus.DRAFT })
   status!: QuotationStatus;

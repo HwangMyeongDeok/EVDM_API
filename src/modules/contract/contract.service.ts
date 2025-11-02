@@ -13,7 +13,6 @@ import { CreateManualDto } from "./dto/create-manual.dto";
 import { UploadAttachmentDto } from "./dto/upload-attachment.dto";
 import { MakePaymentDto } from "./dto/make-payment.dto";
 import { DeliverContractDto } from "./dto/deliver-contract.dto";
-import { ContractItem } from "../contract-item/contract-item.model";
 import {
   CustomerAttachment,
   DocumentType,
@@ -56,25 +55,13 @@ export class ContractService {
     contract.contract_date = new Date();
     contract.delivery_date = dto.delivery_date ? new Date(dto.delivery_date) : null;
     contract.total_amount = quotation.total_amount!;
-    contract.discount_amount = quotation.discount_total!;
+    contract.discount_amount = quotation.discount_total || 0;
     contract.final_amount = finalAmount;
     contract.payment_plan = dto.payment_plan as PaymentPlan;
     contract.deposit_amount = deposit;
     contract.remaining_amount = finalAmount;
     contract.payment_status = PaymentStatus.UNPAID;
     contract.status = ContractStatus.PENDING_APPROVAL;
-
-    contract.items = quotation.items.map((qi) => {
-      const ci = new ContractItem();
-      ci.variant_id = qi.variant_id;
-      ci.quantity = qi.quantity;
-      ci.unit_price = qi.unit_price;
-      ci.line_total = qi.line_total;
-      ci.color = qi.variant.color;
-      ci.description = qi.description || "";
-      ci.discount_amount = qi.discount_amount || 0;
-      return ci;
-    });
 
     return await this.contractRepo.save(contract);
   }
@@ -98,18 +85,6 @@ export class ContractService {
     contract.remaining_amount = finalAmount;
     contract.payment_status = PaymentStatus.UNPAID;
     contract.status = ContractStatus.PENDING_APPROVAL;
-
-    contract.items = dto.items.map((i) => {
-      const ci = new ContractItem();
-      ci.variant_id = i.variant_id;
-      ci.quantity = i.quantity;
-      ci.unit_price = i.unit_price;
-      ci.line_total = i.quantity * i.unit_price;
-      ci.color = i.color || "";
-      ci.description = i.description || "";
-      ci.discount_amount = 0;
-      return ci;
-    });
 
     return await this.contractRepo.save(contract);
   }
@@ -194,7 +169,9 @@ export class ContractService {
   }
 
   private generateCode(): string {
-    return `CT-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+    return `CT-${Date.now()}-${Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0")}`;
   }
 }
 

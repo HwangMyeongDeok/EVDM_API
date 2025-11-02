@@ -1,13 +1,5 @@
 import { z } from "zod";
 
-export const quotationItemSchema = z.object({
-  variantId: z.string().min(1, "Variant ID is required"),
-  description: z.string().optional(),
-  quantity: z.number().int().positive("Quantity must be greater than 0"),
-  unitPrice: z.number().min(0, "Unit price must be non-negative"),
-  discountAmount: z.number().min(0, "Discount amount must be non-negative").default(0),
-  lineTotal: z.number().min(0, "Line total must be non-negative"),
-});
 
 export const createQuotationSchema = z.object({
   body: z.object({
@@ -25,9 +17,7 @@ export const createQuotationSchema = z.object({
     totalAmount: z.number().min(0, "Total amount must be non-negative"),
     notes: z.string().optional(),
     approvedBy: z.string().optional(),
-    items: z
-      .array(quotationItemSchema)
-      .min(1, "Quotation must have at least one item"),
+   
   }),
 });
 
@@ -49,7 +39,6 @@ export const updateQuotationSchema = z.object({
       totalAmount: z.number().min(0).optional(),
       notes: z.string().optional(),
       approvedBy: z.string().optional(),
-      items: z.array(quotationItemSchema).optional(),
     })
     .strict(),
 });

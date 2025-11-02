@@ -1,5 +1,5 @@
 import { AppDataSource } from "../../config/data-source";
-import { Payment } from "./payment.model";
+import { Payment, PaymentStatus } from "./payment.model";
 
 export class PaymentRepository {
   private repo = AppDataSource.getRepository(Payment);
@@ -27,9 +27,15 @@ export class PaymentRepository {
       .createQueryBuilder("payment")
       .select("SUM(payment.amount)", "total")
       .where("payment.contract_id = :contractId", { contractId })
-      .andWhere("payment.payment_status = 'COMPLETED'")
+      .andWhere("payment.payment_status = :status", { status: PaymentStatus.COMPLETED })
       .getRawOne();
     return Number(result?.total || 0);
+  }
+
+  async updateStatus(id: number, status: PaymentStatus, transactionId?: string): Promise<void> {
+    const updates: Partial<Payment> = { payment_status: status, updated_at: new Date() };
+    if (transactionId) updates.transaction_id = transactionId;
+    await this.repo.update(id, updates);
   }
 }
 

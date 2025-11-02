@@ -12,7 +12,6 @@ import {
 import { Dealer } from "../dealer/dealer.model";
 import { Customer } from "../customer/customer.model";
 import { User } from "../user/user.model";
-import { ContractItem } from "../contract-item/contract-item.model";
 import { Quotation } from "../quotation/quotation.model";
 
 export enum ContractStatus {
@@ -67,9 +66,6 @@ export class Contract {
   @ManyToOne(() => User)
   @JoinColumn({ name: "user_id" })
   user!: User;
-
-  @OneToMany(() => ContractItem, (item) => item.contract, { cascade: true })
-  items!: ContractItem[];
 
   @Column({ nullable: true })
   approved_by!: number;

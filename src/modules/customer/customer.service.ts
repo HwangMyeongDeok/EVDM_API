@@ -44,6 +44,11 @@ export class CustomerService {
     if (!customer) throw new AppError("Customer not found", 404);
     return customer;
   }
+
+
+  async getRecent(dealerId: number, limit: number = 10): Promise<Partial<Customer>[]> {
+    return this.repo.getRecent(dealerId, limit);
+  }
 }
 
 export default new CustomerService();

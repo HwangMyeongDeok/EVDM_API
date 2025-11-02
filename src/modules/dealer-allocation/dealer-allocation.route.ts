@@ -14,7 +14,6 @@ import { UserRole } from "../user/user.model";
 const router = Router();
 const ctrl = new DealerAllocationController();
 
-// Quyền hạn: Hãng tạo / duyệt, Đại lý xem
 const adminRoles: UserRole[] = [UserRole.ADMIN];
 const dealerRoles: UserRole[] = [UserRole.DEALER_MANAGER, UserRole.DEALER_STAFF];
 

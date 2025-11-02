@@ -10,6 +10,13 @@ const customerController = new CustomerController();
 
 const allowedRoles: UserRole[] = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
 
+router.get(
+  '/',
+  authMiddleware,
+  checkRole(allowedRoles),
+  customerController.list
+);
+
 router.post(
   '/',
   authMiddleware,

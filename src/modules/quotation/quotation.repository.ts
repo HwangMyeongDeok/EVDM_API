@@ -16,9 +16,8 @@ export class QuotationRepository {
         "dealer",
         "customer",
         "user",
-        "items",
-        "items.variant",
-        "items.variant.vehicle",
+        "variant",
+        "variant.vehicle",
       ],
     });
   }
@@ -26,7 +25,7 @@ export class QuotationRepository {
   async findAllByDealer(dealerId: number): Promise<Quotation[]> {
     return this.repo.find({
       where: { dealer_id: dealerId },
-      relations: ["dealer", "customer", "user", "items", "items.variant"],
+      relations: ["dealer", "customer", "user", "variant"],
       order: { created_at: "DESC" },
     });
   }
@@ -38,7 +37,7 @@ export class QuotationRepository {
   async findByIds(ids: number[]): Promise<Quotation[]> {
     return this.repo.find({
       where: { quotation_id: In(ids) },
-      relations: ["items", "items.variant"],
+      relations: ["variant"],
     });
   }
 }

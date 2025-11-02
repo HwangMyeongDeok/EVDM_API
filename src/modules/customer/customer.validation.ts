@@ -12,7 +12,6 @@ export const createCustomerSchema = z.object({
       .email("Invalid email format")
       .optional(),
     address: z.string().optional(),
-    dealer: z.string().min(1, "Dealer ID is required"),
   }),
 });
 

@@ -13,7 +13,7 @@ class DealerAllocationController {
 
   public async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const dealerId = Number(req.user?.dealer);
+      const dealerId = Number(req.user?.dealer_id);
       const data = await DealerAllocationService.getAllByDealer(dealerId);
       res.json({ success: true, count: data.length, data });
     } catch (error) {
@@ -23,7 +23,7 @@ class DealerAllocationController {
 
   public async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const dealerId = Number(req.user?.dealer);
+      const dealerId = Number(req.user?.dealer_id);
       const id = Number(req.params.id);
       const data = await DealerAllocationService.getById(id, dealerId);
       res.json({ success: true, data });

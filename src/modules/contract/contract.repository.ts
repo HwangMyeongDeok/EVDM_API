@@ -17,9 +17,6 @@ export class ContractRepository {
         "customer",
         "user",
         "quotation",
-        "items",
-        "items.variant",
-        "items.variant.vehicle",
       ],
     });
   }
@@ -31,7 +28,6 @@ export class ContractRepository {
   async findByIds(ids: number[]): Promise<Contract[]> {
     return this.repo.find({
       where: { contract_id: In(ids) },
-      relations: ["items", "items.variant"],
     });
   }
 }
