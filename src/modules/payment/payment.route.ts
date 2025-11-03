@@ -6,11 +6,9 @@ import { UserRole } from "../user/user.model";
 const router = Router();
 const ctrl = new PaymentController();
 
-const staff = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
+const staffRoles = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
 
-router.post('/create', authMiddleware, ctrl.create);
-router.get('/contract/:contractId', authMiddleware, ctrl.getByContract);
-router.get('/vnpay-return', ctrl.vnpayReturn);
-router.get('/vnpay-ipn', ctrl.vnpayIpn);
-
+router.post("/create", authMiddleware, checkRole(staffRoles), ctrl.create);
+router.get("/vnpay-return", ctrl.vnpayReturn);
+router.post("/vnpay-ipn", ctrl.vnpayIpn);
 export default router;

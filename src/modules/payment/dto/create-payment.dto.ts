@@ -3,6 +3,7 @@ import { PaymentMethod, PaymentType, PaymentContext } from "../payment.model";
 export class CreatePaymentDto {
   contract_id?: number;
   customer_id?: number;
+  bank_code?: string;
   amount!: number;
   payment_method!: PaymentMethod;
   payment_type?: PaymentType;

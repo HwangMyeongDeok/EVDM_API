@@ -13,12 +13,27 @@ app.use(express.json());
 app.use(morgan("dev"));
 app.use(
   cors({
-    origin: ["http://localhost:5173", ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    origin: ["http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
 );
-app.use(helmet());
+
+// ===== Helmet CSP =====
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "script-src": ["'self'", "'unsafe-inline'", "https:"],
+        "font-src": ["'self'", "https:", "data:"],
+      },
+    },
+  })
+);
 
 app.use("/api/v1", routes);
 

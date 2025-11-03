@@ -1,161 +1,124 @@
-import { AppError } from "../../common/middlewares/AppError";
-import PaymentRepository from "./payment.repository";
-import {
-  Payment,
-  PaymentStatus,
-} from "./payment.model";
-import ContractRepository from "../contract/contract.repository";
-import { PaymentStatus as ContractPaymentStatus } from "../contract/contract.model";
-import { PaymentMethod, PaymentType } from "./payment.model"; 
-import { CreatePaymentDto } from "./dto/create-payment.dto";
-import { VNPay, ProductCode, VnpLocale } from "vnpay";
+import crypto from "crypto";
+import moment from "moment-timezone";
+import { PaymentMethod, PaymentStatus, PaymentContext, Payment } from "./payment.model";
+import { AppDataSource } from "../../config/data-source";
 
-const vnpay = new VNPay({
-  tmnCode: process.env.VNPAY_TMNCODE || "KGMS82FM",
-  secureSecret:
-    process.env.VNPAY_HASHSECRET || "8ZHCOE749V9Y9PLNW5X8H9M4UAIM7OEB",
-  vnpayHost: process.env.VNPAY_HOST || "https://sandbox.vnpayment.vn",
-  testMode: true,
-  enableLog: true,
-});
+// Centralize config
+const VNPAY_TMN_CODE = process.env.VNPAY_TMN_CODE!;
+const VNPAY_HASH_SECRET = process.env.VNPAY_HASH_SECRET!;                                      
+const VNPAY_URL = process.env.NODE_ENV === "production" ? "https://pay.vnpay.vn/vpcpay.html" : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+const VNPAY_RETURN_URL = process.env.VNPAY_RETURN_URL!;
 
-export class PaymentService {
-  private repo = PaymentRepository;
-  private contractRepo = ContractRepository;
-
-  async create(
-    dto: CreatePaymentDto,
-    userId: number,
-    dealerId: number,
-    ipAddr: string
-  ): Promise<{ payment: Payment; paymentUrl?: string }> {
-    if (!dto.contract_id && !dto.customer_id) {
-      throw new AppError("contract_id or customer_id is required", 400);
-    }
-
-    let amount = dto.amount;
-    let orderType = ProductCode.Other;
-
-    if (dto.payment_type === PaymentType.DEPOSIT) {
-      const total =
-        dto.total_amount ||
-        (dto.contract_id
-          ? (await this.contractRepo.findById(dto.contract_id))?.final_amount ||
-            0
-          : 0);
-      if (total <= 0)
-        throw new AppError("Valid total amount required for deposit", 400);
-      amount = total * 0.3; 
-    } else if (dto.payment_type === PaymentType.INSTALLMENT) {
-      orderType = ProductCode.Phone_Tablet;
-    } else if (dto.payment_type && dto.payment_type !== PaymentType.FULL) {
-      throw new AppError("Invalid payment type", 400);
-    }
-
-    const payment = new Payment();
-    payment.amount = amount;
-    payment.payment_method = dto.payment_method;
-    payment.payment_type = dto.payment_type!;
-    payment.transaction_id = dto.transaction_id!; 
-    payment.payment_context = dto.payment_context;
-    payment.payment_date = new Date();
-    payment.payment_status =
-      dto.payment_method === PaymentMethod.CASH
-        ? PaymentStatus.COMPLETED
-        : PaymentStatus.PENDING;
-
-    if (dto.contract_id) {
-      const contract = await this.contractRepo.findById(dto.contract_id);
-      if (!contract || contract.dealer_id !== dealerId) {
-        throw new AppError("Contract not found or unauthorized", 404);
-      }
-      payment.contract_id = dto.contract_id;
-      payment.contract = contract;
-      payment.customer_id = contract.customer_id;
-      payment.dealer_id = dealerId;
-
-      if (payment.payment_status === PaymentStatus.COMPLETED) {
-        await this.updateContractAfterPayment(dto.contract_id, amount);
-      }
-    } else {
-      payment.customer_id = dto.customer_id!;
-    }
-
-    const savedPayment = await this.repo.save(payment);
-
-    if (dto.payment_method === PaymentMethod.CASH || dto.payment_method === PaymentMethod.BANK_TRANSFER) {
-      return { payment: savedPayment };
-    }
-
-    const paymentUrl = vnpay.buildPaymentUrl({
-      vnp_Amount: amount,
-      vnp_IpAddr: ipAddr,
-      vnp_TxnRef: `${savedPayment.payment_id}`,
-      vnp_OrderInfo: `Thanh toan don hang ${savedPayment.payment_id}`,
-      vnp_OrderType: orderType,
-      vnp_ReturnUrl:
-        process.env.VNPAY_RETURN_URL ||
-        "https://evdm-client.vercel.app/payment-success",
-      vnp_Locale: VnpLocale.VN,
-    });
-
-    return { payment: savedPayment, paymentUrl };
-  }
-
-  private async updateContractAfterPayment(
-    contractId: number,
-    addedAmount: number
-  ): Promise<void> {
-    const contract = await this.contractRepo.findById(contractId);
-    if (!contract) return;
-
-    const totalPaid = await this.repo.getTotalPaidByContract(contractId);
-    const newTotal = totalPaid + addedAmount;
-
-    if (newTotal >= contract.final_amount) {
-      contract.payment_status = ContractPaymentStatus.PAID;
-    } else if (newTotal > 0) {
-      contract.payment_status = ContractPaymentStatus.PARTIAL;
-    }
-    contract.remaining_amount = contract.final_amount - newTotal;
-    await this.contractRepo.save(contract);
-  }
-
-  async getByContractId(contractId: number): Promise<Payment[]> {
-    return this.repo.findByContractId(contractId);
-  }
-
-  async getById(id: number): Promise<Payment> {
-    const payment = await this.repo.findById(id);
-    if (!payment) throw new AppError("Payment not found", 404);
-    return payment;
-  }
-
-  async updateFromIpn(
-    txnRef: string,
-    amount: number | string,
-    transactionNo: string | number,
-    isSuccess: boolean
-  ): Promise<void> {
-    const paymentId = Number(txnRef);
-    const payment = await this.getById(paymentId);
-
-    const vnpAmount = Number(amount); 
-    if (payment.amount !== vnpAmount) throw new AppError("Invalid amount", 400);
-    if (payment.payment_status !== PaymentStatus.PENDING) return;
-
-    const newStatus = isSuccess
-      ? PaymentStatus.COMPLETED
-      : PaymentStatus.FAILED;
-    await this.repo.updateStatus(paymentId, newStatus, transactionNo.toString());
-
-    if (isSuccess && payment.contract_id) {
-      await this.updateContractAfterPayment(
-        payment.contract_id,
-        payment.amount
-      );
-    }
-  }
+interface PaymentInput {
+  contract_id: number;
+  amount: number;
+  payment_method: PaymentMethod;
+  payment_context?: PaymentContext;
+  ipAddr: string;
 }
 
-export default new PaymentService();
+export class PaymentService {
+  static async create(input: PaymentInput) {
+    return await AppDataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Payment);
+
+      const payment = repo.create({
+        contract_id: input.contract_id,
+        amount: input.amount,
+        payment_method: input.payment_method,
+        payment_context: input.payment_context || PaymentContext.CUSTOMER,
+        payment_status: PaymentStatus.PENDING,
+      });
+      await repo.save(payment);
+
+      if (input.payment_method === PaymentMethod.CREDIT_CARD) {
+        const date = moment().tz("Asia/Ho_Chi_Minh");
+        const createDate = date.format("YYYYMMDDHHmmss");
+        const expireDate = date.add(15, "minutes").format("YYYYMMDDHHmmss");
+
+        const vnpParams: Record<string, string> = {
+          vnp_Version: "2.1.0",
+          vnp_Command: "pay",
+          vnp_TmnCode: VNPAY_TMN_CODE,
+          vnp_Amount: (input.amount * 100).toString(),
+          vnp_CurrCode: "VND",
+          vnp_TxnRef: payment.payment_id.toString(),
+          vnp_OrderInfo: `Thanh toan hop dong ${input.contract_id}`,
+          vnp_OrderType: "billpayment",  // Đổi thành này để giống project cũ và hỗ trợ ngân hàng nội địa
+          vnp_Locale: "vn",
+          vnp_ReturnUrl: VNPAY_RETURN_URL,
+          vnp_IpAddr: input.ipAddr,
+          vnp_CreateDate: createDate,
+          vnp_ExpireDate: expireDate,
+        };
+
+        // Sort params
+        const sortedParams = Object.keys(vnpParams).sort().reduce((result, key) => {
+          result[key] = vnpParams[key];
+          return result;
+        }, {} as { [key: string]: string });
+
+        // Use URLSearchParams to build signData with encoded values
+        const signData = new URLSearchParams(sortedParams).toString();
+
+        const secureHash = crypto
+          .createHmac("sha512", VNPAY_HASH_SECRET)
+          .update(signData)
+          .digest("hex");
+
+        // Build URL with encoded params
+        const urlParams = new URLSearchParams(vnpParams);
+        urlParams.append("vnp_SecureHash", secureHash);
+
+        const paymentUrl = `${VNPAY_URL}?${urlParams.toString()}`;
+        return { payment_id: payment.payment_id, paymentUrl };
+      }
+
+      return { payment_id: payment.payment_id };
+    });
+  }
+
+  static async verifyVNPAYReturn(vnpParams: Record<string, string>) {
+    return await AppDataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Payment);
+
+      const secureHash = vnpParams["vnp_SecureHash"];
+      delete vnpParams["vnp_SecureHash"];
+      delete vnpParams["vnp_SecureHashType"];
+
+      // Sort params
+      const sortedParams = Object.keys(vnpParams).sort().reduce((result, key) => {
+        result[key] = vnpParams[key];
+        return result;
+      }, {} as { [key: string]: string });
+
+      // Use URLSearchParams for signData with encoded values (consistent with create)
+      const signData = new URLSearchParams(sortedParams).toString();
+
+      const hashCheck = crypto
+        .createHmac("sha512", VNPAY_HASH_SECRET)
+        .update(signData)
+        .digest("hex");
+
+      const txnRef = Number(vnpParams["vnp_TxnRef"]);
+      const responseCode = vnpParams["vnp_ResponseCode"];
+      const transactionNo = vnpParams["vnp_TransactionNo"];
+      const isValid = secureHash === hashCheck;
+
+      const payment = await repo.findOne({ where: { payment_id: txnRef } });
+      if (!payment) throw new Error("Payment not found");
+      if (payment.payment_status !== PaymentStatus.PENDING) {
+        return { txnRef, responseCode, isValid: false, message: "Payment already processed" };
+      }
+
+      const newStatus = isValid && responseCode === "00" ? PaymentStatus.COMPLETED : PaymentStatus.FAILED;
+      await repo.update(txnRef, {
+        payment_status: newStatus,
+        transaction_id: transactionNo,
+        updated_at: new Date(),
+      });
+
+      return { txnRef, responseCode, isValid, transactionNo };
+    });
+  }
+}
