@@ -24,7 +24,6 @@ export class DealerVehicleRequest {
   @JoinColumn({ name: 'dealer_id' })
   dealer!: Dealer;
 
-  // ❗️Nâng cấp: 1 yêu cầu chứa nhiều item (mỗi item là 1 variant + số lượng)
   @OneToMany(() => DealerVehicleRequestItem, (item) => item.request, {
     cascade: ['insert', 'update'],
     eager: true,
