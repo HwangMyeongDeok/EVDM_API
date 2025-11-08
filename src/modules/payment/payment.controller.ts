@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { PaymentService } from "./payment.service";
-import { PaymentMethod } from "./payment.model";
+import { PaymentMethod, PaymentStatus } from "./payment.model";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -73,6 +73,43 @@ export class PaymentController {
       res.status(200).send("ERROR"); // VNPAY sẽ retry nếu không OK
     }
   }
+
+  async getById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const paymentId = Number(req.params.id);
+      if (!paymentId)
+        return res
+          .status(400)
+          .json({ success: false, message: "Missing payment id" });
+
+      const payment = await PaymentService.findById(paymentId);
+      if (!payment)
+        return res
+          .status(404)
+          .json({ success: false, message: "Payment not found" });
+
+      res.status(200).json({ success: true, data: payment });
+    } catch (err) {
+      console.error("Get payment error:", err);
+      next(err);
+    }
+  }
+
+  async getAll(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = req.user; // Assuming authMiddleware sets req.user with { user_id, role, dealer_id }
+      if (!user) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+
+      const payments = await PaymentService.getAll(user);
+      res.status(200).json({ success: true, data: payments });
+    } catch (err) {
+      console.error("Get all payments error:", err);
+      next(err);
+    }
+  }
+
 }
 
 export default PaymentController;

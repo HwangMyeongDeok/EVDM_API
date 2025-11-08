@@ -1,6 +1,6 @@
 import { AppError } from "../../common/middlewares/AppError";
 import QuotationRepository from "./quotation.repository";
-import { Quotation, QuotationStatus } from "./quotation.model";
+import { Quotation } from "./quotation.model";
 import { CreateQuotationDto } from "./dto/create-quotation.dto";
 import { UpdateQuotationDto } from "./dto/update-quotation.dto";
 import { AppDataSource } from "../../config/data-source";
@@ -31,7 +31,6 @@ export class QuotationService {
     quotation.dealer_id = dealerId;
     quotation.user_id = userId;
     quotation.variant_id = variant.variant_id;
-    quotation.status = QuotationStatus.DRAFT;
     quotation.subtotal = subtotal;
     quotation.tax_rate = taxRate;
     quotation.tax_amount = taxAmount;
@@ -46,8 +45,6 @@ export class QuotationService {
     const quotation = await this.repo.findById(id);
     if (!quotation || quotation.dealer_id !== dealerId)
       throw new AppError("Not found", 404);
-    if (quotation.status !== QuotationStatus.DRAFT)
-      throw new AppError("Cannot update", 400);
 
     if (dto.variant_id) {
       const variant = await this.variantRepo.findOne({
@@ -74,22 +71,7 @@ export class QuotationService {
     const quotation = await this.repo.findById(id);
     if (!quotation || quotation.dealer_id !== dealerId)
       throw new AppError("Not found", 404);
-    if (quotation.status !== QuotationStatus.DRAFT)
-      throw new AppError("Invalid status", 400);
 
-    quotation.status = QuotationStatus.SENT;
-    return await this.repo.save(quotation);
-  }
-
-  async approve(id: number, managerId: number, dealerId: number): Promise<Quotation> {
-    const quotation = await this.repo.findById(id);
-    if (!quotation || quotation.dealer_id !== dealerId)
-      throw new AppError("Not found", 404);
-    if (quotation.status !== QuotationStatus.SENT)
-      throw new AppError("Invalid status", 400);
-
-    quotation.status = QuotationStatus.APPROVED;
-    quotation.approved_by = { user_id: managerId } as any;
     return await this.repo.save(quotation);
   }
 
@@ -97,8 +79,6 @@ export class QuotationService {
     const quotation = await this.repo.findById(id);
     if (!quotation || quotation.dealer_id !== dealerId)
       throw new AppError("Not found", 404);
-    if (quotation.status !== QuotationStatus.DRAFT)
-      throw new AppError("Cannot delete", 400);
     await this.repo.delete(id);
   }
 

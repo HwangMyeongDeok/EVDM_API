@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import DealerService from "./dealer.service";
 
 class DealerController {
-  // Lấy danh sách đại lý
   public async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const dealers = await DealerService.getAll();
@@ -12,7 +11,6 @@ class DealerController {
     }
   }
 
-  // Lấy chi tiết 1 đại lý
   public async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
@@ -23,7 +21,6 @@ class DealerController {
     }
   }
 
-  // Tạo đại lý mới
   public async create(req: Request, res: Response, next: NextFunction) {
     try {
       const dealer = await DealerService.create(req.body);
@@ -33,7 +30,6 @@ class DealerController {
     }
   }
 
-  // Cập nhật đại lý
   public async update(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
@@ -44,7 +40,6 @@ class DealerController {
     }
   }
 
-  // Xóa đại lý
   public async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);

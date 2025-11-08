@@ -1,12 +1,23 @@
 import crypto from "crypto";
 import moment from "moment-timezone";
-import { PaymentMethod, PaymentStatus, PaymentContext, Payment } from "./payment.model";
+import {
+  PaymentMethod,
+  PaymentStatus,
+  PaymentContext,
+  Payment,
+} from "./payment.model";
 import { AppDataSource } from "../../config/data-source";
+import { UserRole } from "../user/user.model";
+import { FindOptionsWhere } from "typeorm";
+import { Dealer } from "../dealer/dealer.model";
 
 // Centralize config
 const VNPAY_TMN_CODE = process.env.VNPAY_TMN_CODE!;
-const VNPAY_HASH_SECRET = process.env.VNPAY_HASH_SECRET!;                                      
-const VNPAY_URL = process.env.NODE_ENV === "production" ? "https://pay.vnpay.vn/vpcpay.html" : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+const VNPAY_HASH_SECRET = process.env.VNPAY_HASH_SECRET!;
+const VNPAY_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://pay.vnpay.vn/vpcpay.html"
+    : "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 const VNPAY_RETURN_URL = process.env.VNPAY_RETURN_URL!;
 
 interface PaymentInput {
@@ -15,6 +26,13 @@ interface PaymentInput {
   payment_method: PaymentMethod;
   payment_context?: PaymentContext;
   ipAddr: string;
+}
+
+interface UserInfo {
+  user_id: number;
+  role: UserRole;
+  dealer_id?: number | null;
+  email: string;
 }
 
 export class PaymentService {
@@ -44,7 +62,7 @@ export class PaymentService {
           vnp_CurrCode: "VND",
           vnp_TxnRef: payment.payment_id.toString(),
           vnp_OrderInfo: `Thanh toan hop dong ${input.contract_id}`,
-          vnp_OrderType: "billpayment",  // Đổi thành này để giống project cũ và hỗ trợ ngân hàng nội địa
+          vnp_OrderType: "billpayment", // Đổi thành này để giống project cũ và hỗ trợ ngân hàng nội địa
           vnp_Locale: "vn",
           vnp_ReturnUrl: VNPAY_RETURN_URL,
           vnp_IpAddr: input.ipAddr,
@@ -53,10 +71,12 @@ export class PaymentService {
         };
 
         // Sort params
-        const sortedParams = Object.keys(vnpParams).sort().reduce((result, key) => {
-          result[key] = vnpParams[key];
-          return result;
-        }, {} as { [key: string]: string });
+        const sortedParams = Object.keys(vnpParams)
+          .sort()
+          .reduce((result, key) => {
+            result[key] = vnpParams[key];
+            return result;
+          }, {} as { [key: string]: string });
 
         // Use URLSearchParams to build signData with encoded values
         const signData = new URLSearchParams(sortedParams).toString();
@@ -87,10 +107,12 @@ export class PaymentService {
       delete vnpParams["vnp_SecureHashType"];
 
       // Sort params
-      const sortedParams = Object.keys(vnpParams).sort().reduce((result, key) => {
-        result[key] = vnpParams[key];
-        return result;
-      }, {} as { [key: string]: string });
+      const sortedParams = Object.keys(vnpParams)
+        .sort()
+        .reduce((result, key) => {
+          result[key] = vnpParams[key];
+          return result;
+        }, {} as { [key: string]: string });
 
       // Use URLSearchParams for signData with encoded values (consistent with create)
       const signData = new URLSearchParams(sortedParams).toString();
@@ -108,10 +130,18 @@ export class PaymentService {
       const payment = await repo.findOne({ where: { payment_id: txnRef } });
       if (!payment) throw new Error("Payment not found");
       if (payment.payment_status !== PaymentStatus.PENDING) {
-        return { txnRef, responseCode, isValid: false, message: "Payment already processed" };
+        return {
+          txnRef,
+          responseCode,
+          isValid: false,
+          message: "Payment already processed",
+        };
       }
 
-      const newStatus = isValid && responseCode === "00" ? PaymentStatus.COMPLETED : PaymentStatus.FAILED;
+      const newStatus =
+        isValid && responseCode === "00"
+          ? PaymentStatus.COMPLETED
+          : PaymentStatus.FAILED;
       await repo.update(txnRef, {
         payment_status: newStatus,
         transaction_id: transactionNo,
@@ -119,6 +149,44 @@ export class PaymentService {
       });
 
       return { txnRef, responseCode, isValid, transactionNo };
+    });
+  }
+
+  static async findById(paymentId: number) {
+    const repo = AppDataSource.getRepository(Payment);
+    return await repo.findOne({
+      where: { payment_id: paymentId },
+      relations: ["contract", "customer", "dealer"],
+    });
+  }
+
+static async getAll(user: UserInfo) {
+    const repo = AppDataSource.getRepository(Payment);
+
+    let where: FindOptionsWhere<Payment> = {};
+
+    switch (user.role) {
+      case UserRole.DEALER_STAFF:
+        where = { contract: { user_id: user.user_id } };
+        break;
+
+      case UserRole.DEALER_MANAGER:
+        if (user.dealer_id == null) {
+          throw new Error("Dealer ID missing for manager");
+        }
+        where.dealer_id = user.dealer_id;
+        break;
+      case UserRole.ADMIN:
+        break;
+
+      default:
+        throw new Error("Unauthorized role for viewing payments");
+    }
+
+    return await repo.find({
+      where,
+      relations: ["contract", "customer", "dealer"],
+      order: { created_at: "DESC" },
     });
   }
 }

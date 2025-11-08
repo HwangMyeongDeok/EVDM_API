@@ -15,12 +15,6 @@ import { User } from "../user/user.model";
 import { Contract } from "../contract/contract.model";
 import { VehicleVariant } from "../vehicle-variant/vehicle-variant.model";
 
-export enum QuotationStatus {
-  DRAFT = "DRAFT",
-  SENT = "SENT",
-  APPROVED = "APPROVED",
-  REJECTED = "REJECTED",
-}
 
 @Entity({ name: "quotations" })
 export class Quotation {
@@ -57,9 +51,6 @@ export class Quotation {
   @ManyToOne(() => VehicleVariant)
   @JoinColumn({ name: "variant_id" })
   variant!: VehicleVariant;
-
-  @Column({ type: "varchar", length: 20, default: QuotationStatus.DRAFT })
-  status!: QuotationStatus;
 
   @Column("decimal", { precision: 15, scale: 2, nullable: true })
   subtotal!: number;

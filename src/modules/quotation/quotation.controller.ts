@@ -45,16 +45,6 @@ class QuotationController {
     } catch (error) { next(error); }
   }
 
-  public async approve(req: Request, res: Response, next: NextFunction) {
-    try {
-      const id = Number(req.params.id);
-      const managerId = Number(req.user?.user_id);
-      const dealerId = Number(req.user?.dealer_id);
-      const quotation = await QuotationService.approve(id, managerId, dealerId);
-      res.json({ success: true, data: quotation });
-    } catch (error) { next(error); }
-  }
-
   public async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);

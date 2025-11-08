@@ -5,19 +5,16 @@ import { Dealer } from "./dealer.model";
 export class DealerService {
   private repo = DealerRepository;
 
-  // Lấy danh sách đại lý
   async getAll(): Promise<Dealer[]> {
     return this.repo.findAll();
   }
 
-  // Lấy đại lý theo ID
   async getById(id: number): Promise<Dealer> {
     const dealer = await this.repo.findById(id);
     if (!dealer) throw new AppError("Dealer not found", 404);
     return dealer;
   }
 
-  // Tạo mới đại lý
   async create(data: Partial<Dealer>): Promise<Dealer> {
     if (!data.dealer_name) throw new AppError("Dealer name is required", 400);
 
@@ -30,7 +27,6 @@ export class DealerService {
     return this.repo.create(dealer);
   }
 
-  // Cập nhật thông tin đại lý
   async update(id: number, data: Partial<Dealer>): Promise<Dealer> {
     const dealer = await this.repo.findById(id);
     if (!dealer) throw new AppError("Dealer not found", 404);
