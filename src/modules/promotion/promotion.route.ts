@@ -1,4 +1,3 @@
-// promotion.routes.ts
 import { Router } from 'express';
 import PromotionController from './promotion.controller';
 import { authMiddleware, checkRole } from '../../common/middlewares/auth.middleware';

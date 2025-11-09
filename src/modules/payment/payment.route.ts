@@ -13,7 +13,6 @@ const staffRoles = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
 const allViewRoles = [
   UserRole.DEALER_STAFF,
   UserRole.DEALER_MANAGER,
-  UserRole.EVM_STAFF,
   UserRole.ADMIN,
 ];
 router.post("/create", authMiddleware, checkRole(staffRoles), ctrl.create);

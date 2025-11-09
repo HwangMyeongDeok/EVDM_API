@@ -61,6 +61,17 @@ class DealerAllocationController {
       next(error);
     }
   }
+
+  public async confirmReceipt(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const data = await DealerAllocationService.confirmReceipt(id);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
 }
 
 export default DealerAllocationController;

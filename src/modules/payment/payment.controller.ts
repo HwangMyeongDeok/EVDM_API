@@ -9,6 +9,13 @@ export class PaymentController {
     try {
       const { contract_id, amount, payment_method } = req.body;
 
+      const user = req.user;
+      if (!user) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
       if (!contract_id || !amount || !payment_method) {
         return res
           .status(400)
@@ -31,6 +38,7 @@ export class PaymentController {
         amount: Number(amount),
         payment_method: payment_method as PaymentMethod,
         ipAddr,
+        user: user,
       });
 
       res.status(201).json({
@@ -62,27 +70,34 @@ export class PaymentController {
 
   async vnpayIpn(req: Request, res: Response, next: NextFunction) {
     try {
-      const query = req.query as Record<string, string>; // VNPAY gửi qua query dù là POST
+      const query = req.query as Record<string, string>;
 
-      const result = await PaymentService.verifyVNPAYReturn(query);
+      await PaymentService.verifyVNPAYReturn(query);
 
-      // Không redirect, chỉ update status và return OK cho VNPAY
-      res.status(200).send("OK");
+      res.status(200).json({ RspCode: "00", Message: "Success" });
     } catch (err) {
       console.error("VNPAY IPN error:", err);
-      res.status(200).send("ERROR"); // VNPAY sẽ retry nếu không OK
+      res.status(200).json({ RspCode: "99", Message: "Failed" });
     }
   }
 
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const paymentId = Number(req.params.id);
+
+      const user = req.user;
+      if (!user) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
       if (!paymentId)
         return res
           .status(400)
           .json({ success: false, message: "Missing payment id" });
 
-      const payment = await PaymentService.findById(paymentId);
+      const payment = await PaymentService.findById(paymentId, user);
       if (!payment)
         return res
           .status(404)
@@ -97,19 +112,32 @@ export class PaymentController {
 
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const user = req.user; // Assuming authMiddleware sets req.user with { user_id, role, dealer_id }
+      const user = req.user;
       if (!user) {
-        return res.status(401).json({ success: false, message: "Unauthorized" });
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
       }
 
-      const payments = await PaymentService.getAll(user);
-      res.status(200).json({ success: true, data: payments });
+     const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 10;
+      const status = req.query.status as PaymentStatus | undefined;
+      const contract_id = req.query.contract_id ? Number(req.query.contract_id) : undefined;
+
+      const result = await PaymentService.findAll({
+        user,
+        page,
+        limit,
+        status,
+        contract_id
+      });
+      
+      res.status(200).json({ success: true, ...result });
     } catch (err) {
       console.error("Get all payments error:", err);
       next(err);
     }
   }
-
 }
 
 export default PaymentController;

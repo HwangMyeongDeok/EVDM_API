@@ -34,7 +34,6 @@ export class DealerService {
     return this.repo.update(id, data);
   }
 
-  // Xóa đại lý
   async delete(id: number): Promise<void> {
     const dealer = await this.repo.findById(id);
     if (!dealer) throw new AppError("Dealer not found", 404);

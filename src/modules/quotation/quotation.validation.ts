@@ -7,9 +7,6 @@ export const createQuotationSchema = z.object({
     customer: z.string().min(1, "Customer ID is required"),
     dealer: z.string().min(1, "Dealer ID is required"),
     staff: z.string().min(1, "Staff ID is required"),
-    status: z
-      .enum(["DRAFT", "SENT", "APPROVED", "REJECTED"])
-      .default("DRAFT"),
     subtotal: z.number().min(0, "Subtotal must be non-negative"),
     taxRate: z.number().min(0).max(100).default(10),
     taxAmount: z.number().min(0, "Tax amount must be non-negative"),

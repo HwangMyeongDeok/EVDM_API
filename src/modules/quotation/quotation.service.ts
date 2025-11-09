@@ -10,7 +10,11 @@ export class QuotationService {
   private repo = QuotationRepository;
   private variantRepo = AppDataSource.getRepository(VehicleVariant);
 
-  async create(dto: CreateQuotationDto, userId: number, dealerId: number): Promise<Quotation> {
+  async create(
+    dto: CreateQuotationDto,
+    userId: number,
+    dealerId: number
+  ): Promise<Quotation> {
     if (!dto.variant_id) throw new AppError("Variant is required", 400);
 
     const variant = await this.variantRepo.findOne({
@@ -41,7 +45,11 @@ export class QuotationService {
     return await this.repo.save(quotation);
   }
 
-  async update(id: number, dto: UpdateQuotationDto, dealerId: number): Promise<Quotation> {
+  async update(
+    id: number,
+    dto: UpdateQuotationDto,
+    dealerId: number
+  ): Promise<Quotation> {
     const quotation = await this.repo.findById(id);
     if (!quotation || quotation.dealer_id !== dealerId)
       throw new AppError("Not found", 404);
@@ -90,6 +98,14 @@ export class QuotationService {
 
   async getAllByDealer(dealerId: number): Promise<Quotation[]> {
     return this.repo.findAllByDealer(dealerId);
+  }
+
+  async getAll(): Promise<Quotation[]> {
+    return this.repo.findAllWithRelations();
+  }
+
+  async getAllByUser(userId: number): Promise<Quotation[]> {
+    return this.repo.findAllByUser(userId);
   }
 
   private generateCode(): string {

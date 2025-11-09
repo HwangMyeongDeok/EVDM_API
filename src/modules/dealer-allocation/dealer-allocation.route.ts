@@ -59,4 +59,12 @@ router.delete(
   ctrl.delete
 );
 
+router.patch(
+  "/:id/confirm-receipt",
+  authMiddleware,
+  checkRole(dealerRoles),
+  validate(allocationIdParamSchema),
+  ctrl.confirmReceipt
+);
+
 export default router;

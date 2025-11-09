@@ -9,13 +9,19 @@ export class DealerAllocationRepository {
     return await this.repo.save(allocation);
   }
 
-  async findAllByDealer(dealerId: number): Promise<DealerVehicleAllocation[]> {
-    return this.repo.find({
-      where: { dealer_id: dealerId },
-      relations: ["variant", "variant.vehicle", "request"],
-      order: { created_at: "DESC" },
-    });
-  }
+async findAllByDealer(dealerId: number): Promise<DealerVehicleAllocation[]> {
+  return this.repo.find({
+    where: { dealer_id: dealerId },
+    relations: [
+      "items",
+      "items.variant",
+      "items.variant.vehicle",
+      "request",
+    ],
+    order: { created_at: "DESC" },
+  });
+}
+
 
   async findById(id: number): Promise<DealerVehicleAllocation | null> {
     return this.repo.findOne({

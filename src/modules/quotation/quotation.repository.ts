@@ -25,7 +25,22 @@ export class QuotationRepository {
   async findAllByDealer(dealerId: number): Promise<Quotation[]> {
     return this.repo.find({
       where: { dealer_id: dealerId },
-      relations: ["dealer", "customer", "user", "variant"],
+      relations: ["dealer", "customer", "user", "variant", "variant.vehicle"],
+      order: { created_at: "DESC" },
+    });
+  }
+
+  async findAllByUser(userId: number): Promise<Quotation[]> {
+    return this.repo.find({
+      where: { user_id: userId },
+      relations: ["dealer", "customer", "user", "variant","variant.vehicle"],
+      order: { created_at: "DESC" },
+    });
+  }
+
+  async findAllWithRelations(): Promise<Quotation[]> {
+    return this.repo.find({
+      relations: ["dealer", "customer", "user", "variant","variant.vehicle"],
       order: { created_at: "DESC" },
     });
   }

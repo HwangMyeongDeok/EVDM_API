@@ -7,7 +7,6 @@ import {
   PaymentPlan,
 } from "./contract.model";
 import QuotationRepository from "../quotation/quotation.repository";
-import { QuotationStatus } from "../quotation/quotation.model";
 import { CreateFromQuotationDto } from "./dto/create-from-quotation.dto";
 import { CreateManualDto } from "./dto/create-manual.dto";
 import { UploadAttachmentDto } from "./dto/upload-attachment.dto";
@@ -37,8 +36,6 @@ export class ContractService {
     const quotation = await this.quotationRepo.findById(quotationId);
     if (!quotation) throw new AppError("Quotation not found", 404);
     if (quotation.dealer_id !== dealerId) throw new AppError("Forbidden", 403);
-    if (![QuotationStatus.SENT, QuotationStatus.APPROVED].includes(quotation.status))
-      throw new AppError("Quotation must be SENT or APPROVED", 400);
 
     const exist = await this.contractRepo.findByQuotationId(quotationId);
     if (exist) throw new AppError("Contract already exists", 400);
