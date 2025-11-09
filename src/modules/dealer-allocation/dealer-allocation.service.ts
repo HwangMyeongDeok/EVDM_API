@@ -16,6 +16,17 @@ export class DealerAllocationService {
   private repo = DealerAllocationRepository;
   private inventoryRepo = AppDataSource.getRepository(Inventory);
 
+  async getByRequestId(requestId: number, dealerId: number): Promise<DealerVehicleAllocation[]> {
+    const allocations = await this.repo.findByRequestId(requestId);
+
+    const filtered = allocations.filter(a => a.dealer_id === dealerId);
+
+    if (!filtered.length) {
+      throw new AppError("No allocations found for this request", 404);
+    }
+
+    return filtered;
+  }
   async create(dto: {
     request_id?: number;
     dealer_id: number;

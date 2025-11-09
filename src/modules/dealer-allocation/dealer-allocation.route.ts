@@ -17,6 +17,14 @@ const ctrl = new DealerAllocationController();
 const adminRoles: UserRole[] = [UserRole.ADMIN];
 const dealerRoles: UserRole[] = [UserRole.DEALER_MANAGER, UserRole.DEALER_STAFF];
 
+router.get(
+  "/:request_id",
+  authMiddleware,
+  checkRole(dealerRoles),
+  validate(allocationIdParamSchema),
+  ctrl.getByRequestId
+);
+
 router.post(
   "/",
   authMiddleware,

@@ -48,6 +48,14 @@ export class DealerAllocationRepository {
   async delete(id: number): Promise<void> {
     await this.repo.delete(id);
   }
+
+   async findByRequestId(requestId: number): Promise<DealerVehicleAllocation[]> {
+    return this.repo.find({
+      where: { request_id: requestId },
+      relations: ["items", "items.variant", "items.variant.vehicle", "dealer", "request"],
+      order: { allocation_date: "DESC" },
+    });
+  }
 }
 
 export default new DealerAllocationRepository();

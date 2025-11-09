@@ -2,6 +2,17 @@ import { Request, Response, NextFunction } from "express";
 import DealerAllocationService from "./dealer-allocation.service";
 
 class DealerAllocationController {
+
+  public async getByRequestId(req: Request, res: Response, next: NextFunction) {
+    try {
+      const dealerId = Number(req.user?.dealer_id);
+      const requestId = Number(req.params.request_id);
+      const data = await DealerAllocationService.getByRequestId(requestId, dealerId);
+      res.json({ success: true, count: data.length, data });
+    } catch (error) {
+      next(error);
+    }
+  }
   public async create(req: Request, res: Response, next: NextFunction) {
     try {
       const data = await DealerAllocationService.create(req.body);
