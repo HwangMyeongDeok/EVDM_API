@@ -17,7 +17,7 @@ const ctrl = new DealerRequestController();
 
 // Quyền hạn: nhân viên/QL đại lý tạo yêu cầu, hãng duyệt
 const staffRoles: UserRole[] = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
-const adminRoles: UserRole[] = [UserRole.ADMIN];
+const evmRoles: UserRole[] = [UserRole.EVM_STAFF];
 
 router.post(
   "/",
@@ -40,7 +40,7 @@ router.get(
 router.patch(
   "/:id/approve",
   authMiddleware,
-  checkRole(adminRoles),
+  checkRole(evmRoles),
   validate(requestIdParamSchema),
   ctrl.approve
 );
@@ -48,7 +48,7 @@ router.patch(
 router.patch(
   "/:id/reject",
   authMiddleware,
-  checkRole(adminRoles),
+  checkRole(evmRoles),
   validate(rejectRequestSchema),
   ctrl.reject
 );
@@ -56,7 +56,7 @@ router.patch(
 router.delete(
   "/:id",
   authMiddleware,
-  checkRole(staffRoles),
+  checkRole(evmRoles),
   validate(requestIdParamSchema),
   ctrl.delete
 );
