@@ -9,10 +9,12 @@ import { AppDataSource } from "../../config/data-source";
 import { VehicleVariant } from "../vehicle-variant/vehicle-variant.model";
 import { Dealer } from "../dealer/dealer.model";
 import { DealerVehicleRequest } from "../dealer-request/dealer-request.model";
-import InventoryRepository from "../inventory/inventory.repository";
+import { Inventory } from "../inventory/inventory.model";
+import { IsNull } from "typeorm";
 
 export class DealerAllocationService {
   private repo = DealerAllocationRepository;
+  private inventoryRepo = AppDataSource.getRepository(Inventory);
 
   async create(dto: {
     request_id?: number;
@@ -38,14 +40,7 @@ export class DealerAllocationService {
     const request = await requestRepo.findOne({
       where: { request_id: dto.request_id },
     });
-
-    if (!request) {
-      throw new AppError("Request not found", 404);
-    }
-
-    if (!dto.request_id) {
-      throw new AppError("Request ID is required to create an allocation", 400);
-    }
+    if (!request) throw new AppError("Request not found", 404);
 
     const allocation = new DealerVehicleAllocation();
     allocation.dealer_id = dto.dealer_id;
@@ -112,19 +107,7 @@ export class DealerAllocationService {
     if (alloc.status !== AllocationStatus.IN_TRANSIT)
       throw new AppError("Only IN_TRANSIT allocations can be delivered", 400);
 
-    for (const item of alloc.items) {
-      await InventoryRepository.updateStock(
-        item.variant_id,
-        alloc.dealer_id,
-        item.quantity
-      );
-      await InventoryRepository.updateStock(
-        item.variant_id,
-        null,
-        -item.quantity
-      );
-    }
-
+    await this.transferStockFromCentralToDealer(alloc);
     alloc.status = AllocationStatus.DELIVERED;
 
     return this.repo.save(alloc);
@@ -143,19 +126,7 @@ export class DealerAllocationService {
         400
       );
 
-    for (const item of alloc.items) {
-      await InventoryRepository.updateStock(
-        item.variant_id,
-        alloc.dealer_id,
-        item.quantity
-      );
-      await InventoryRepository.updateStock(
-        item.variant_id,
-        null,
-        -item.quantity
-      );
-    }
-
+    await this.transferStockFromCentralToDealer(alloc);
     alloc.status = AllocationStatus.DELIVERED;
 
     return this.repo.save(alloc);
@@ -167,6 +138,59 @@ export class DealerAllocationService {
     if (alloc.status !== AllocationStatus.PENDING)
       throw new AppError("Cannot delete allocation after processing", 400);
     await this.repo.delete(id);
+  }
+
+  /**
+   * Helper: chuyển stock từ kho trung tâm sang đại lý
+   */
+  private async transferStockFromCentralToDealer(
+    alloc: DealerVehicleAllocation
+  ) {
+    for (const item of alloc.items) {
+      const variantId = item.variant_id;
+
+      // Lấy/tạo kho trung tâm
+      let centralInv = await this.inventoryRepo.findOne({
+        where: { variant_id: variantId, dealer_id: IsNull() },
+      });
+      if (!centralInv) {
+        throw new AppError(
+          `Central inventory for variant ${variantId} not found`,
+          400
+        );
+      }
+
+      // Kiểm tra tồn kho trung tâm
+      if (centralInv.quantity < item.quantity) {
+        throw new AppError(
+          `Insufficient stock for variant ${variantId} in central warehouse`,
+          400
+        );
+      }
+
+      // Trừ kho trung tâm
+      centralInv.quantity -= item.quantity;
+      centralInv.last_updated = new Date();
+      await this.inventoryRepo.save(centralInv);
+
+      // Lấy/tạo kho đại lý
+      let dealerInv = await this.inventoryRepo.findOne({
+        where: { variant_id: variantId, dealer_id: alloc.dealer_id },
+      });
+
+      if (!dealerInv) {
+        dealerInv = this.inventoryRepo.create({
+          variant_id: variantId,
+          dealer_id: alloc.dealer_id,
+          quantity: 0,
+        });
+      }
+
+      // Cộng kho đại lý
+      dealerInv.quantity += item.quantity;
+      dealerInv.last_updated = new Date();
+      await this.inventoryRepo.save(dealerInv);
+    }
   }
 }
 

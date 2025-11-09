@@ -27,7 +27,7 @@ router.post(
   ctrl.create
 );
 
-router.get("/", authMiddleware, checkRole(staffRoles), ctrl.getAll);
+router.get("/", authMiddleware, checkRole(evmRoles), ctrl.getAll);
 
 router.get(
   "/:id",
