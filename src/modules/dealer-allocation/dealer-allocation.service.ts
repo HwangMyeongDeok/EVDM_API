@@ -18,18 +18,22 @@ export class DealerAllocationService {
 
   async getByRequestId(
     requestId: number,
-    dealerId: number
+    role: string,
+    dealerId?: number
   ): Promise<DealerVehicleAllocation[]> {
     const allocations = await this.repo.findByRequestId(requestId);
 
-    const filtered = allocations.filter((a) => a.dealer_id === dealerId);
-
-    if (!filtered.length) {
-      throw new AppError("No allocations found for this request", 404);
+    if (role !== "EVM_STAFF") {
+      const filtered = allocations.filter((a) => a.dealer_id === dealerId);
+      if (!filtered.length) {
+        throw new AppError("Không tìm thấy allocation cho đại lý này", 404);
+      }
+      return filtered;
     }
 
-    return filtered;
+    return allocations;
   }
+
   async create(dto: {
     request_id?: number;
     dealer_id: number;
