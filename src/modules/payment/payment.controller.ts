@@ -32,7 +32,6 @@ export class PaymentController {
         payment_method,
         ipAddr,
         user,
-        returnUrl: `${FRONTEND_URL}/dealer/manager/deposit-status`,
       });
 
       res.status(201).json({ success: true, data: result });

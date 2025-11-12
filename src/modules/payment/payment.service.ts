@@ -50,7 +50,6 @@ export class PaymentService {
     payment_method: PaymentMethod;
     ipAddr: string;
     user: UserInfo;
-    returnUrl?: string;
   }) {
     return await AppDataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Payment);
@@ -71,6 +70,7 @@ export class PaymentService {
         const expireDate = date.add(15, "minutes").format("YYYYMMDDHHmmss");
 
         const vnpParams: Record<string, string> = {
+          vnp_IpAddr: input.ipAddr,
           vnp_Version: "2.1.0",
           vnp_Command: "pay",
           vnp_TmnCode: VNPAY_TMN_CODE,
@@ -80,9 +80,7 @@ export class PaymentService {
           vnp_OrderInfo: `Thanh toan tien coc request ${input.request_id}`,
           vnp_OrderType: "billpayment",
           vnp_Locale: "vn",
-          vnp_ReturnUrl:
-            process.env.VNPAY_RETURN_DEPOSIT_URL ||
-            "http://localhost:4000/api/v1/payments/vnpay-return-deposit",
+          vnp_ReturnUrl:process.env.VNPAY_RETURN_DEPOSIT_URL!,
           vnp_CreateDate: createDate,
           vnp_ExpireDate: expireDate,
         };
