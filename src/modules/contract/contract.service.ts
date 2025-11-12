@@ -27,6 +27,9 @@ export class ContractService {
   private contractRepo = ContractRepository;
   private quotationRepo = QuotationRepository;
 
+  async getAll(dealerId: number): Promise<Contract[]> {
+    return await this.contractRepo.findAllByDealer(dealerId);
+  }
   async createFromQuotation(
     quotationId: number,
     dto: CreateFromQuotationDto,

@@ -47,6 +47,13 @@ export class DealerRequestRepository {
     });
   }
 
+  async findAll(): Promise<DealerVehicleRequest[]> {
+  return this.reqRepo.find({
+    relations: ["dealer", "items", "items.variant", "items.variant.vehicle"],
+    order: { created_at: "DESC" },
+  });
+}
+
   async findById(id: number): Promise<DealerVehicleRequest | null> {
     return this.reqRepo.findOne({
       where: { request_id: id },

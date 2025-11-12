@@ -14,7 +14,14 @@ export class DealerAllocationRepository {
   async findAllByDealer(dealerId: number): Promise<DealerVehicleAllocation[]> {
     return this.repo.find({
       where: { dealer_id: dealerId },
-      relations: ["items", "items.variant", "items.variant.vehicle", "request"],
+      relations: [
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+        "request",
+        "request.items",
+        "request.items.variant",
+      ],
       order: { created_at: "DESC" },
     });
   }
@@ -49,11 +56,25 @@ export class DealerAllocationRepository {
     await this.repo.delete(id);
   }
 
-   async findByRequestId(requestId: number): Promise<DealerVehicleAllocation[]> {
+  async findByRequestId(requestId: number): Promise<DealerVehicleAllocation[]> {
     return this.repo.find({
       where: { request_id: requestId },
-      relations: ["items", "items.variant", "items.variant.vehicle", "dealer", "request"],
+      relations: [
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+        "dealer",
+        "request",
+      ],
       order: { allocation_date: "DESC" },
+    });
+  }
+  async findAllByRequestId(
+    requestId: number
+  ): Promise<DealerVehicleAllocation[]> {
+    return this.repo.find({
+      where: { request_id: requestId },
+      relations: ["items", "items.variant", "request"],
     });
   }
 }

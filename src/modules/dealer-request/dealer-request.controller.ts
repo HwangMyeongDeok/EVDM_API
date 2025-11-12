@@ -12,15 +12,24 @@ class DealerRequestController {
     }
   }
 
-  public async getAll(req: Request, res: Response, next: NextFunction) {
-    try {
-      const dealerId = Number(req.user?.dealer_id);
-      const data = await DealerRequestService.getAllByDealer(dealerId);
-      res.json({ success: true, count: data.length, data });
-    } catch (error) {
-      next(error);
+public async getAll(req: Request, res: Response, next: NextFunction) {
+  try {
+    const role = req.user?.role;
+    const dealerId = Number(req.user?.dealer_id);
+
+    let data;
+    if (role === "EVM_STAFF") {
+      data = await DealerRequestService.getAll(); 
+    } else {
+      data = await DealerRequestService.getAllByDealer(dealerId);
     }
+
+    res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    next(error);
   }
+}
+
 
   public async getById(req: Request, res: Response, next: NextFunction) {
     try {

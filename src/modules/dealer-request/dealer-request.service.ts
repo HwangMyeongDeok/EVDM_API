@@ -43,6 +43,10 @@ class DealerRequestService {
   async getAllByDealer(dealerId: number): Promise<DealerVehicleRequest[]> {
     return this.repo.findAllByDealer(dealerId);
   }
+  async getAll(): Promise<DealerVehicleRequest[]> {
+  return this.repo.findAll();
+}
+
 
   async getById(id: number, dealerId: number): Promise<DealerVehicleRequest> {
     const req = await this.repo.findById(id);

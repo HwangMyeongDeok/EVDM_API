@@ -20,5 +20,12 @@ router.get("/vnpay-return", ctrl.vnpayReturn);
 router.post("/vnpay-ipn", ctrl.vnpayIpn);
 router.get("/:id", authMiddleware, checkRole(staffRoles), ctrl.getById);
 router.get("/", authMiddleware, checkRole(allViewRoles), ctrl.getAll);
+router.post(
+  "/deposit",
+  authMiddleware,
+  checkRole(staffRoles),
+  ctrl.createDeposit
+);
+router.get("/vnpay-return-deposit", ctrl.vnpayReturnDeposit);
 
 export default router;

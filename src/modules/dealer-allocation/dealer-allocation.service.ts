@@ -16,10 +16,13 @@ export class DealerAllocationService {
   private repo = DealerAllocationRepository;
   private inventoryRepo = AppDataSource.getRepository(Inventory);
 
-  async getByRequestId(requestId: number, dealerId: number): Promise<DealerVehicleAllocation[]> {
+  async getByRequestId(
+    requestId: number,
+    dealerId: number
+  ): Promise<DealerVehicleAllocation[]> {
     const allocations = await this.repo.findByRequestId(requestId);
 
-    const filtered = allocations.filter(a => a.dealer_id === dealerId);
+    const filtered = allocations.filter((a) => a.dealer_id === dealerId);
 
     if (!filtered.length) {
       throw new AppError("No allocations found for this request", 404);
@@ -127,18 +130,52 @@ export class DealerAllocationService {
   async confirmReceipt(id: number): Promise<DealerVehicleAllocation> {
     const alloc = await this.repo.findById(id);
     if (!alloc) throw new AppError("Allocation not found", 404);
-    if (
-      ![AllocationStatus.PENDING, AllocationStatus.IN_TRANSIT].includes(
-        alloc.status
-      )
-    )
+
+    // Lấy tất cả allocations của request này
+    const allAllocations = await this.repo.findAllByRequestId(alloc.request_id);
+
+    // Tính tổng giá trị request hiện tại (không cần lưu vào DB)
+    const requestTotalAmount = alloc.request.items.reduce(
+      (sum, item) => sum + item.requested_quantity * item.variant.retail_price,
+      0
+    );
+
+    // Tính tổng paid_amount đã thanh toán trước đó
+    const totalPaid = allAllocations.reduce(
+      (sum, a) => sum + (a.paid_amount || 0),
+      0
+    );
+
+    // Kiểm tra cọc 50% đầu tiên
+    const isFirstConfirmation = alloc.status === AllocationStatus.PENDING;
+    if (isFirstConfirmation && totalPaid < requestTotalAmount * 0.5) {
       throw new AppError(
-        "Only PENDING or IN_TRANSIT allocations can be confirmed as received",
+        "Chưa thanh toán cọc 50%, không thể xác nhận lô hàng đầu tiên",
         400
       );
+    }
 
+    // Chuyển stock từ trung tâm sang đại lý
     await this.transferStockFromCentralToDealer(alloc);
+
+    // Cập nhật trạng thái allocation
     alloc.status = AllocationStatus.DELIVERED;
+
+    // Tính giá trị allocation này
+    const allocationValue = alloc.items.reduce(
+      (sum, i) => sum + i.quantity * i.variant.retail_price,
+      0
+    );
+
+    // Cập nhật paid_amount cho allocation (trả dần)
+    // Nếu chưa đủ 50% cọc, allocation đầu tiên sẽ được tính đúng 50% cọc
+    if (isFirstConfirmation) {
+      alloc.paid_amount = requestTotalAmount * 0.5;
+    } else {
+      // Các allocation tiếp theo trả dần theo giá trị allocation
+      const remaining = requestTotalAmount - totalPaid;
+      alloc.paid_amount = Math.min(allocationValue, remaining);
+    }
 
     return this.repo.save(alloc);
   }

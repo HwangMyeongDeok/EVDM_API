@@ -21,7 +21,7 @@ router.post(
   "/",
   authMiddleware,
   checkRole(staff),
-  validate(createQuotationSchema),
+  // validate(createQuotationSchema),
   ctrl.create
 );
 router.get("/", authMiddleware, checkRole(staff), ctrl.getAll);

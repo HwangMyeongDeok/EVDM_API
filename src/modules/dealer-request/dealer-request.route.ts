@@ -32,8 +32,8 @@ router.get("/", authMiddleware, checkRole(evmRoles), ctrl.getAll);
 router.get(
   "/:id",
   authMiddleware,
-  checkRole(staffRoles),
-  validate(requestIdParamSchema),
+  checkRole(evmRoles),
+  // validate(requestIdParamSchema),
   ctrl.getById
 );
 

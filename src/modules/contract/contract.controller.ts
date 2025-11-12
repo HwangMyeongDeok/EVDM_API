@@ -3,6 +3,15 @@ import ContractService from "./contract.service";
 import { AppError } from "../../common/middlewares/AppError";
 
 class ContractController {
+
+  public async getAll(req: Request, res: Response, next: NextFunction) {
+    try {
+      const dealerId = Number(req.user?.dealer_id);
+      const data = await ContractService.getAll(dealerId);
+      res.json({ success: true, count: data.length, data });
+    } catch (error) { next(error); }
+  }
+
   public async createFromQuotation(req: Request, res: Response, next: NextFunction) {
     try {
       const quotationId = Number(req.params.id);

@@ -5,6 +5,19 @@ import { In } from "typeorm";
 export class ContractRepository {
   private repo = AppDataSource.getRepository(Contract);
 
+  async findAllByDealer(dealerId: number): Promise<Contract[]> {
+    return this.repo.find({
+      where: { dealer_id: dealerId },
+      relations: [
+        "dealer",
+        "customer", 
+        "user",
+        "quotation",
+      ],
+      order: { created_at: "DESC" },
+    });
+  }
+
   async save(contract: Contract): Promise<Contract> {
     return await this.repo.save(contract);
   }
@@ -12,12 +25,7 @@ export class ContractRepository {
   async findById(id: number): Promise<Contract | null> {
     return this.repo.findOne({
       where: { contract_id: id },
-      relations: [
-        "dealer",
-        "customer",
-        "user",
-        "quotation",
-      ],
+      relations: ["dealer", "customer", "user", "quotation"],
     });
   }
 

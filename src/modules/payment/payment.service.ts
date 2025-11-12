@@ -5,6 +5,7 @@ import {
   PaymentStatus,
   PaymentContext,
   Payment,
+  PaymentType,
 } from "./payment.model";
 import { AppDataSource } from "../../config/data-source";
 import { UserRole } from "../user/user.model";
@@ -43,6 +44,74 @@ interface FindAllOptions {
 }
 
 export class PaymentService {
+  static async createDeposit(input: {
+    request_id: number;
+    amount: number;
+    payment_method: PaymentMethod;
+    ipAddr: string;
+    user: UserInfo;
+    returnUrl?: string;
+  }) {
+    return await AppDataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Payment);
+
+      const payment = repo.create({
+        request_id: input.request_id,
+        amount: input.amount,
+        payment_method: input.payment_method,
+        payment_type: PaymentType.DEPOSIT,
+        payment_context: PaymentContext.CUSTOMER,
+        payment_status: PaymentStatus.PENDING,
+      });
+      await repo.save(payment);
+
+      if (input.payment_method === PaymentMethod.CREDIT_CARD) {
+        const date = moment().tz("Asia/Ho_Chi_Minh");
+        const createDate = date.format("YYYYMMDDHHmmss");
+        const expireDate = date.add(15, "minutes").format("YYYYMMDDHHmmss");
+
+        const vnpParams: Record<string, string> = {
+          vnp_Version: "2.1.0",
+          vnp_Command: "pay",
+          vnp_TmnCode: VNPAY_TMN_CODE,
+          vnp_Amount: (input.amount * 100).toString(),
+          vnp_CurrCode: "VND",
+          vnp_TxnRef: payment.payment_id.toString(),
+          vnp_OrderInfo: `Thanh toan tien coc request ${input.request_id}`,
+          vnp_OrderType: "billpayment",
+          vnp_Locale: "vn",
+          vnp_ReturnUrl:
+            process.env.VNPAY_RETURN_DEPOSIT_URL ||
+            "http://localhost:4000/api/v1/payments/vnpay-return-deposit",
+          vnp_CreateDate: createDate,
+          vnp_ExpireDate: expireDate,
+        };
+
+        const sortedParams = Object.keys(vnpParams)
+          .sort()
+          .reduce((result, key) => {
+            result[key] = vnpParams[key];
+            return result;
+          }, {} as { [key: string]: string });
+
+        const signData = new URLSearchParams(sortedParams).toString();
+
+        const secureHash = crypto
+          .createHmac("sha512", VNPAY_HASH_SECRET)
+          .update(signData)
+          .digest("hex");
+
+        const urlParams = new URLSearchParams(vnpParams);
+        urlParams.append("vnp_SecureHash", secureHash);
+
+        const paymentUrl = `${VNPAY_URL}?${urlParams.toString()}`;
+        return { payment_id: payment.payment_id, paymentUrl };
+      }
+
+      return { payment_id: payment.payment_id };
+    });
+  }
+
   static async create(input: PaymentInput) {
     return await AppDataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Payment);
@@ -161,7 +230,7 @@ export class PaymentService {
 
     switch (user.role) {
       case UserRole.ADMIN:
-        break; 
+        break;
       case UserRole.DEALER_MANAGER:
         if (user.dealer_id == null) {
           throw new Error("Dealer ID missing for manager");
@@ -169,7 +238,7 @@ export class PaymentService {
         where.dealer_id = user.dealer_id;
         break;
       case UserRole.DEALER_STAFF:
-        where.contract = { user_id: user.user_id } as any; 
+        where.contract = { user_id: user.user_id } as any;
         break;
       default:
         throw new Error("Unauthorized role");
@@ -181,10 +250,10 @@ export class PaymentService {
     });
   }
 
-static async findAll(options: FindAllOptions) {
+  static async findAll(options: FindAllOptions) {
     const repo = AppDataSource.getRepository(Payment);
     const { user, page, limit, status, contract_id } = options;
-    
+
     const skip = (page - 1) * limit;
 
     const where: FindOptionsWhere<Payment> = {};
@@ -197,7 +266,7 @@ static async findAll(options: FindAllOptions) {
 
     switch (user.role) {
       case UserRole.ADMIN:
-        break; 
+        break;
       case UserRole.DEALER_MANAGER:
         if (user.dealer_id == null) {
           throw new Error("Dealer ID missing for manager");

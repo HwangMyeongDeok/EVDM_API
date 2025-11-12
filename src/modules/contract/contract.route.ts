@@ -29,6 +29,13 @@ router.post(
   contractController.createFromQuotation
 );
 
+router.get(
+  "/",
+  authMiddleware,
+  checkRole(staffRoles),
+  contractController.getAll
+);
+
 router.post(
   "/manual",
   authMiddleware,

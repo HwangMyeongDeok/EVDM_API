@@ -5,6 +5,43 @@ import { PaymentMethod, PaymentStatus } from "./payment.model";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 export class PaymentController {
+  async createDeposit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { request_id, amount, payment_method } = req.body;
+      const user = req.user;
+      if (!user) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+
+      if (!request_id || !amount || !payment_method) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Thiếu thông tin bắt buộc" });
+      }
+
+      const ipAddr =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0] ||
+        req.socket.remoteAddress ||
+        "127.0.0.1";
+
+      const result = await PaymentService.createDeposit({
+        request_id: Number(request_id),
+        amount: Number(amount),
+        payment_method,
+        ipAddr,
+        user,
+        returnUrl: `${FRONTEND_URL}/dealer/manager/deposit-status`,
+      });
+
+      res.status(201).json({ success: true, data: result });
+    } catch (err) {
+      console.error("Deposit payment error:", err);
+      next(err);
+    }
+  }
+
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const { contract_id, amount, payment_method } = req.body;
@@ -68,6 +105,24 @@ export class PaymentController {
     }
   }
 
+
+  async vnpayReturnDeposit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = req.query as Record<string, string>;
+      const result = await PaymentService.verifyVNPAYReturn(query);
+
+      const status =
+        result.isValid && result.responseCode === "00" ? "success" : "failed";
+      const redirectUrl = `${FRONTEND_URL}/dealer/manager/deposit-status?status=${status}&txnRef=${result.txnRef}&responseCode=${result.responseCode}`;
+      res.redirect(redirectUrl);
+    } catch (err) {
+      console.error("VNPAY deposit return error:", err);
+      res.redirect(
+        `${FRONTEND_URL}/dealer/manager/deposit-status?status=error`
+      );
+    }
+  }
+
   async vnpayIpn(req: Request, res: Response, next: NextFunction) {
     try {
       const query = req.query as Record<string, string>;
@@ -119,19 +174,21 @@ export class PaymentController {
           .json({ success: false, message: "Unauthorized" });
       }
 
-     const page = Number(req.query.page) || 1;
+      const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 10;
       const status = req.query.status as PaymentStatus | undefined;
-      const contract_id = req.query.contract_id ? Number(req.query.contract_id) : undefined;
+      const contract_id = req.query.contract_id
+        ? Number(req.query.contract_id)
+        : undefined;
 
       const result = await PaymentService.findAll({
         user,
         page,
         limit,
         status,
-        contract_id
+        contract_id,
       });
-      
+
       res.status(200).json({ success: true, ...result });
     } catch (err) {
       console.error("Get all payments error:", err);
