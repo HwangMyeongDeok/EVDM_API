@@ -58,7 +58,7 @@ public async getById(req: Request, res: Response, next: NextFunction) {
   public async reject(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const data = await DealerRequestService.reject(id, req.body.reason);
+      const data = await DealerRequestService.reject(id);
       res.json({ success: true, message: "Từ chối yêu cầu thành công", data });
     } catch (error) {
       next(error);

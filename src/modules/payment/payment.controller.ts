@@ -5,6 +5,21 @@ import { PaymentMethod, PaymentStatus } from "./payment.model";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 export class PaymentController {
+   async getTransactionById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const payment = await PaymentService.getTransactionById(Number(id));
+
+      if (!payment) {
+        return res.status(404).json({ success: false, message: "Transaction not found" });
+      }
+
+      res.status(200).json({ success: true, data: payment });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
   async createDeposit(req: Request, res: Response, next: NextFunction) {
     try {
       const { request_id, amount, payment_method } = req.body;

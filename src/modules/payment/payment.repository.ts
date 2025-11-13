@@ -13,7 +13,10 @@ class PaymentRepository {
   }
 
   async findById(paymentId: number): Promise<Payment | null> {
-    return await this.repo.findOne({ where: { payment_id: paymentId } });
+    return this.repo.findOne({
+      where: { payment_id: paymentId },
+      relations: ["dealer", "customer", "contract", "request"],
+    });
   }
 
   async updateStatus(paymentId: number, status: PaymentStatus, transactionId?: string) {

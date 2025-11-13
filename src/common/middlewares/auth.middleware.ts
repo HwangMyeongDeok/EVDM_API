@@ -41,6 +41,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
       dealer_id: decoded.dealer_id,
       email: decoded.email
     };
+    console.log('Protected route accessed:', req.originalUrl);
 
     next();
   } catch (error) {
@@ -50,6 +51,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
 export const checkRole = (requiredRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
+
     if (!req.user) {
       return next(new AppError('User not authenticated', 401));
     }

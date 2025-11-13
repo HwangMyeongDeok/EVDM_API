@@ -16,7 +16,6 @@ export enum DealerVehicleRequestStatus {
   PENDING = "PENDING",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
-  PARTIAL = "PARTIAL",
 }
 
 @Entity({ name: "dealer_vehicle_requests" })
@@ -30,6 +29,9 @@ export class DealerVehicleRequest {
   @ManyToOne(() => Dealer)
   @JoinColumn({ name: "dealer_id" })
   dealer!: Dealer;
+
+  @Column({ type: "decimal", precision: 12, scale: 2, default: 0 })
+  paid_amount!: number;
 
   @OneToMany(() => DealerVehicleAllocation, (allocation) => allocation.request)
   allocations!: DealerVehicleAllocation[];

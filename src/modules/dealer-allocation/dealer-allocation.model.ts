@@ -59,9 +59,6 @@ export class DealerVehicleAllocation {
   @Column({ type: "datetime2", default: () => "CURRENT_TIMESTAMP" })
   allocation_date!: Date;
 
-  @Column({ type: "decimal", precision: 12, scale: 2, default: 0 })
-  paid_amount: number = 0;
-
   @CreateDateColumn({ type: "datetime2" })
   created_at!: Date;
 

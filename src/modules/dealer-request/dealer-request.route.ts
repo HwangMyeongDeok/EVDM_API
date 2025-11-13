@@ -8,7 +8,6 @@ import { validate } from "../../common/middlewares/validate.middleware";
 import {
   createRequestSchema,
   requestIdParamSchema,
-  rejectRequestSchema,
 } from "./dealer-request.validation";
 import { UserRole } from "../user/user.model";
 
@@ -17,7 +16,7 @@ const ctrl = new DealerRequestController();
 
 // Quyền hạn: nhân viên/QL đại lý tạo yêu cầu, hãng duyệt
 const staffRoles: UserRole[] = [UserRole.DEALER_STAFF, UserRole.DEALER_MANAGER];
-const evmRoles: UserRole[] = [UserRole.EVM_STAFF];
+const evmRoles: UserRole[] = [UserRole.EVM_STAFF, UserRole.DEALER_MANAGER];
 
 router.post(
   "/",
@@ -48,8 +47,7 @@ router.patch(
 router.patch(
   "/:id/reject",
   authMiddleware,
-  checkRole(evmRoles),
-  validate(rejectRequestSchema),
+  checkRole(staffRoles),
   ctrl.reject
 );
 

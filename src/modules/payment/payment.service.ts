@@ -11,6 +11,8 @@ import { AppDataSource } from "../../config/data-source";
 import { UserRole } from "../user/user.model";
 import { FindOptionsWhere } from "typeorm";
 import { Dealer } from "../dealer/dealer.model";
+import paymentRepository from "./payment.repository";
+import { DealerVehicleRequest } from "../dealer-request/dealer-request.model";
 
 const VNPAY_TMN_CODE = process.env.VNPAY_TMN_CODE!;
 const VNPAY_HASH_SECRET = process.env.VNPAY_HASH_SECRET!;
@@ -44,6 +46,10 @@ interface FindAllOptions {
 }
 
 export class PaymentService {
+ static async getTransactionById(paymentId: number): Promise<Payment | null> {
+    const transaction = await paymentRepository.findById(paymentId);
+    return transaction;
+  }
   static async createDeposit(input: {
     request_id: number;
     amount: number;
@@ -59,7 +65,7 @@ export class PaymentService {
         amount: input.amount,
         payment_method: input.payment_method,
         payment_type: PaymentType.DEPOSIT,
-        payment_context: PaymentContext.CUSTOMER,
+        payment_context: PaymentContext.DEALER,
         payment_status: PaymentStatus.PENDING,
       });
       await repo.save(payment);
@@ -169,7 +175,7 @@ export class PaymentService {
     });
   }
 
-  static async verifyVNPAYReturn(vnpParams: Record<string, string>) {
+    static async verifyVNPAYReturn(vnpParams: Record<string, string>) {
     return await AppDataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Payment);
 
@@ -185,37 +191,46 @@ export class PaymentService {
         }, {} as { [key: string]: string });
 
       const signData = new URLSearchParams(sortedParams).toString();
-
-      const hashCheck = crypto
-        .createHmac("sha512", VNPAY_HASH_SECRET)
-        .update(signData)
-        .digest("hex");
+      const hashCheck = crypto.createHmac("sha512", VNPAY_HASH_SECRET).update(signData).digest("hex");
 
       const txnRef = Number(vnpParams["vnp_TxnRef"]);
       const responseCode = vnpParams["vnp_ResponseCode"];
       const transactionNo = vnpParams["vnp_TransactionNo"];
       const isValid = secureHash === hashCheck;
 
-      const payment = await repo.findOne({ where: { payment_id: txnRef } });
+      const payment = await repo.findOne({
+        where: { payment_id: txnRef },
+        relations: ["request"], // 🔴 cần có quan hệ request để biết request_id và số tiền
+      });
       if (!payment) throw new Error("Payment not found");
+
+      // ⛔ Idempotent: nếu đã xử lý rồi thì thoát sớm, KHÔNG cộng tiền lần nữa
       if (payment.payment_status !== PaymentStatus.PENDING) {
-        return {
-          txnRef,
-          responseCode,
-          isValid: false,
-          message: "Payment already processed",
-        };
+        return { txnRef, responseCode, isValid: false, message: "Payment already processed" };
       }
 
       const newStatus =
-        isValid && responseCode === "00"
-          ? PaymentStatus.COMPLETED
-          : PaymentStatus.FAILED;
+        isValid && responseCode === "00" ? PaymentStatus.COMPLETED : PaymentStatus.FAILED;
+
+      // Cập nhật trạng thái giao dịch
       await repo.update(txnRef, {
         payment_status: newStatus,
         transaction_id: transactionNo,
         updated_at: new Date(),
       });
+
+      // ✅ Nếu là cọc (DEPOSIT) và thanh toán thành công → cộng vào request.paid_amount
+      if (newStatus === PaymentStatus.COMPLETED && payment.payment_type === PaymentType.DEPOSIT) {
+        if (!payment.request_id) {
+          throw new Error("Missing request_id on deposit payment");
+        }
+        const requestRepo = manager.getRepository(DealerVehicleRequest);
+        await requestRepo.increment(
+          { request_id: payment.request_id },
+          "paid_amount",
+          Number(payment.amount || 0)
+        );
+      }
 
       return { txnRef, responseCode, isValid, transactionNo };
     });

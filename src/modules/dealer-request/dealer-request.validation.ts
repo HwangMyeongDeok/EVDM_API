@@ -22,14 +22,3 @@ export const requestIdParamSchema = z.object({
     ),
   }),
 });
-
-export const rejectRequestSchema = z.object({
-  body: z.object({
-    reason: z.string().max(500, "Lý do quá dài (tối đa 500 ký tự)").optional(),
-  }),
-  params: z.object({
-    id: z.string().transform(Number).pipe(
-      z.number().int().positive("request_id không hợp lệ")
-    ),
-  }),
-});

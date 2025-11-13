@@ -105,14 +105,14 @@ async getById(id: number, role: string, dealerId?: number): Promise<DealerVehicl
     return (await this.repo.findById(id))!;
   }
 
-  async reject(id: number, reason?: string): Promise<DealerVehicleRequest> {
+  async reject(id: number): Promise<DealerVehicleRequest> {
     const req = await this.repo.findById(id);
     if (!req) throw new AppError("Không tìm thấy yêu cầu", 404);
+    console.log("dsadsa", req.status);
     if (req.status !== DealerVehicleRequestStatus.PENDING)
       throw new AppError("Yêu cầu đã được xử lý trước đó", 400);
 
     req.status = DealerVehicleRequestStatus.REJECTED;
-    // (Tuỳ bạn: có thể lưu reason vào trường notes hoặc bảng log riêng)
     return this.repo.save(req);
   }
 

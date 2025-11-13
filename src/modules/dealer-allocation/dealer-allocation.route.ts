@@ -14,7 +14,7 @@ import { UserRole } from "../user/user.model";
 const router = Router();
 const ctrl = new DealerAllocationController();
 
-const adminRoles: UserRole[] = [UserRole.ADMIN];
+const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.DEALER_MANAGER];
 const dealerRoles: UserRole[] = [UserRole.DEALER_MANAGER, UserRole.EVM_STAFF];
 
 router.get(
@@ -46,7 +46,7 @@ router.get(
 router.patch(
   "/:id/in-transit",
   authMiddleware,
-  checkRole(adminRoles),
+  checkRole(dealerRoles),
   validate(allocationIdParamSchema),
   ctrl.markInTransit
 );
