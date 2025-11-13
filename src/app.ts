@@ -19,7 +19,6 @@ app.use(
   })
 );
 
-// ===== Helmet CSP =====
 app.use(
   helmet({
     contentSecurityPolicy: {

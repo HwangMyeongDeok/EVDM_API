@@ -12,26 +12,38 @@ class DealerRequestController {
     }
   }
 
-  public async getAll(req: Request, res: Response, next: NextFunction) {
-    try {
-      const dealerId = Number(req.user?.dealer_id);
-      const data = await DealerRequestService.getAllByDealer(dealerId);
-      res.json({ success: true, count: data.length, data });
-    } catch (error) {
-      next(error);
-    }
-  }
+public async getAll(req: Request, res: Response, next: NextFunction) {
+  try {
+    const role = req.user?.role;
+    const dealerId = Number(req.user?.dealer_id);
 
-  public async getById(req: Request, res: Response, next: NextFunction) {
-    try {
-      const dealerId = Number(req.user?.dealer_id);
-      const id = Number(req.params.id);
-      const data = await DealerRequestService.getById(id, dealerId);
-      res.json({ success: true, data });
-    } catch (error) {
-      next(error);
+    let data;
+    if (role === "EVM_STAFF") {
+      data = await DealerRequestService.getAll(); 
+    } else {
+      data = await DealerRequestService.getAllByDealer(dealerId);
     }
+
+    res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    next(error);
   }
+}
+
+
+public async getById(req: Request, res: Response, next: NextFunction) {
+  try {
+    const role = req.user?.role!;
+    const dealerId = Number(req.user?.dealer_id);
+    const id = Number(req.params.id);
+
+    const data = await DealerRequestService.getById(id, role, dealerId);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
 
   public async approve(req: Request, res: Response, next: NextFunction) {
     try {

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createCustomerSchema = z.object({
   body: z.object({
-    fullName: z.string().min(1, "Full name is required"),
+    full_name: z.string().min(1, "Full name is required"),
     phone: z
       .string()
       .min(9, "Phone number must have at least 9 digits")

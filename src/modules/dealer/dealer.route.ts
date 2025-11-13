@@ -15,7 +15,6 @@ import { UserRole } from "../user/user.model";
 const router = Router();
 const ctrl = new DealerController();
 
-// Chỉ Admin mới được quản lý danh sách đại lý
 const adminRoles: UserRole[] = [UserRole.ADMIN];
 
 router.get("/", authMiddleware, checkRole(adminRoles), ctrl.getAll);

@@ -43,12 +43,22 @@ class DealerRequestService {
   async getAllByDealer(dealerId: number): Promise<DealerVehicleRequest[]> {
     return this.repo.findAllByDealer(dealerId);
   }
+  async getAll(): Promise<DealerVehicleRequest[]> {
+  return this.repo.findAll();
+}
 
-  async getById(id: number, dealerId: number): Promise<DealerVehicleRequest> {
-    const req = await this.repo.findById(id);
-    if (!req || req.dealer_id !== dealerId) throw new AppError("Không tìm thấy yêu cầu", 404);
-    return req;
+
+async getById(id: number, role: string, dealerId?: number): Promise<DealerVehicleRequest> {
+  const req = await this.repo.findById(id);
+  if (!req) throw new AppError("Không tìm thấy yêu cầu", 404);
+
+  if (role !== "EVM_STAFF" && req.dealer_id !== dealerId) {
+    throw new AppError("Không có quyền truy cập yêu cầu này", 403);
   }
+
+  return req;
+}
+
 
   async approve(id: number): Promise<DealerVehicleRequest> {
     const req = await this.repo.findById(id);

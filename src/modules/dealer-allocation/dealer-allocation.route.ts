@@ -15,13 +15,21 @@ const router = Router();
 const ctrl = new DealerAllocationController();
 
 const adminRoles: UserRole[] = [UserRole.ADMIN];
-const dealerRoles: UserRole[] = [UserRole.DEALER_MANAGER, UserRole.DEALER_STAFF];
+const dealerRoles: UserRole[] = [UserRole.DEALER_MANAGER, UserRole.EVM_STAFF];
+
+router.get(
+  "/:request_id",
+  authMiddleware,
+  checkRole(dealerRoles),
+  validate(allocationIdParamSchema),
+  ctrl.getByRequestId
+);
 
 router.post(
   "/",
   authMiddleware,
-  checkRole(adminRoles),
-  validate(createAllocationSchema),
+  checkRole(dealerRoles),
+  // validate(createAllocationSchema),
   ctrl.create
 );
 
@@ -57,6 +65,14 @@ router.delete(
   checkRole(adminRoles),
   validate(allocationIdParamSchema),
   ctrl.delete
+);
+
+router.patch(
+  "/:id/confirm-receipt",
+  authMiddleware,
+  checkRole(dealerRoles),
+  validate(allocationIdParamSchema),
+  ctrl.confirmReceipt
 );
 
 export default router;

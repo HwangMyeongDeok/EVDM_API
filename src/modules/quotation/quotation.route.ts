@@ -20,7 +20,7 @@ const manager = [UserRole.DEALER_MANAGER];
 router.post(
   "/",
   authMiddleware,
-  // checkRole(staff),
+  checkRole(staff),
   // validate(createQuotationSchema),
   ctrl.create
 );
@@ -34,7 +34,6 @@ router.patch(
   ctrl.update
 );
 router.post("/:id/send", authMiddleware, checkRole(staff), ctrl.send);
-router.post("/:id/approve", authMiddleware, checkRole(manager), ctrl.approve);
 router.delete("/:id", authMiddleware, checkRole(staff), ctrl.delete);
 
 export default router;

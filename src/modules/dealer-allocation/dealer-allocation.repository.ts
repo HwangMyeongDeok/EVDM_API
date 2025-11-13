@@ -5,14 +5,23 @@ import { AllocationStatus } from "./dealer-allocation.model";
 export class DealerAllocationRepository {
   private repo = AppDataSource.getRepository(DealerVehicleAllocation);
 
-  async save(allocation: DealerVehicleAllocation): Promise<DealerVehicleAllocation> {
+  async save(
+    allocation: DealerVehicleAllocation
+  ): Promise<DealerVehicleAllocation> {
     return await this.repo.save(allocation);
   }
 
   async findAllByDealer(dealerId: number): Promise<DealerVehicleAllocation[]> {
     return this.repo.find({
       where: { dealer_id: dealerId },
-      relations: ["variant", "variant.vehicle", "request"],
+      relations: [
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+        "request",
+        "request.items",
+        "request.items.variant",
+      ],
       order: { created_at: "DESC" },
     });
   }
@@ -20,20 +29,53 @@ export class DealerAllocationRepository {
   async findById(id: number): Promise<DealerVehicleAllocation | null> {
     return this.repo.findOne({
       where: { allocation_id: id },
-      relations: ["dealer", "variant", "variant.vehicle", "request"],
+      relations: [
+        "dealer",
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+        "request",
+      ],
     });
   }
 
   async findPending(): Promise<DealerVehicleAllocation[]> {
     return this.repo.find({
-      //where: { status: "PENDING" },
       where: { status: AllocationStatus.PENDING },
-      relations: ["dealer", "variant", "variant.vehicle"],
+      relations: [
+        "dealer",
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+        "request",
+      ],
     });
   }
 
   async delete(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+
+  async findByRequestId(requestId: number): Promise<DealerVehicleAllocation[]> {
+    return this.repo.find({
+      where: { request_id: requestId },
+      relations: [
+        "items",
+        "items.variant",
+        "items.variant.vehicle",
+        "dealer",
+        "request",
+      ],
+      order: { allocation_date: "DESC" },
+    });
+  }
+  async findAllByRequestId(
+    requestId: number
+  ): Promise<DealerVehicleAllocation[]> {
+    return this.repo.find({
+      where: { request_id: requestId },
+      relations: ["items", "items.variant", "request"],
+    });
   }
 }
 
